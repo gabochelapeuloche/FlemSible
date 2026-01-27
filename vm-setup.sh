@@ -8,7 +8,9 @@ fi
 
 ### Default values
 W_NUMBER=2
+W_PREFIX=worker
 CP_NUMBER=1
+CP_PREFIX=control-plane
 OS_VERSION="noble"
 CPUS=2
 MEMORY=3G
@@ -59,11 +61,11 @@ done
 VMS=()
 
 for ((i=1; i<=$CP_NUMBER; i++)); do
-  VMS+=("control-plane-$i")
+  VMS+=("$CP_PREFIX-$i")
 done
 
 for ((i=1; i<=$W_NUMBER; i++)); do
-  VMS+=("worker-$i")
+  VMS+=("$W_PREFIX-$i")
 done
 
 if [[ "$VERBOSE" = true ]]; then
@@ -138,3 +140,56 @@ if [[ "$SNAPSHOT" = true ]]; then
     multipass start "$NODE"
   done
 fi
+
+# Security groups
+for NODE in "${VMS[@]}"; do
+  if [[ "$NODE" =~ ^"$CP_PREFIX" ]]; then
+    # Regles spé du control plane
+    multipass exec $NODE -- bash -c "
+      sudo apt update && sudo apt install -y ufw
+      sudo ufw --force reset
+      sudo ufw default deny incoming
+      sudo ufw default allow outgoing
+      sudo ufw allow 22/tcp
+      
+      # Kubernetes API server (6443) (accessible à tout le range ip du cluster)
+      sudo ufw allow 6443/tcp
+      
+      # etcd (2379-2380)
+      sudo ufw allow 2379:2380/tcp
+      
+      # kubelet API sched kcm
+      sudo ufw allow 10249:10260/tcp
+      
+      # calico
+      sudo ufw allow 179/tcp
+      sudo ufw allow 5473/tcp
+
+      sudo ufw enable
+    "
+  else
+    # Règles spé des workers
+    multipass exec $NODE -- bash -c "
+      sudo apt update && sudo apt install -y ufw
+      sudo ufw --force reset
+      sudo ufw default deny incoming
+      sudo ufw default allow outgoing
+      sudo ufw allow 22/tcp
+
+      # Autoriser kubelet API (normalement limité à controlplane)
+      sudo ufw allow 10250/tcp
+      
+      # Autoriser kube-proxy (normalement limité à controlplane)
+      sudo ufw allow 10256/tcp
+      
+      # NodePort range (exposé publiquement)
+      sudo ufw allow 30000:32767/tcp
+      sudo ufw allow 30000:32767/udp
+
+      # calico
+      sudo ufw allow 179/tcp
+      
+      sudo ufw enable
+    "
+  fi
+done
