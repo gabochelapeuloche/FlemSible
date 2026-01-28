@@ -7,18 +7,18 @@ if ! command -v multipass &> /dev/null; then
 fi
 
 ### Default values
-W_NUMBER=2
-W_PREFIX=worker
-CP_NUMBER=1
-CP_PREFIX=control-plane
-OS_VERSION="noble"
-CPUS=2
-MEMORY=3G
-DISK=15G
-VERBOSE=false
-SNAPSHOT=false
-CONNEXION_TEST=true
-NET_OPT=()
+W_NUMBER=2				# Default number of worker nodes
+W_PREFIX=worker				# Default name prefix of worker nodes
+CP_NUMBER=1				# Default number of control plane nodes
+CP_PREFIX=control-plane			# Default name prefix of control plane nodes
+OS_VERSION="noble"			# Default OS version
+CPUS=2					# Default number of CPUS allocated
+MEMORY=3G				# Default quantity of memory allocated
+DISK=15G				# Default quantity of disk allocates
+VERBOSE=false				# Default verbose parameter
+SNAPSHOT=false				# Default snapshot parameter
+CONNEXION_TEST=true			# Guarantied connexion test beetween instances
+NET_OPT=()				# Managed no network provided
 if [[ -n "${NETWORK:-}" ]]; then
   NET_OPT=(--network "$NETWORK")
 fi
@@ -241,54 +241,30 @@ if [[ "$SNAPSHOT" = true ]]; then
   done
 fi
 
-# Security groups
 for NODE in "${VMS[@]}"; do
-    multipass exec $NODE -- bash -c "
-      sudo apt update && sudo apt install -y ufw
-      sudo ufw --force reset
-      sudo ufw default deny incoming
-      sudo ufw default allow outgoing
-      sudo ufw allow 22/tcp
-      
-      # calico 
-      sudo ufw allow 179/tcp
-      sudo ufw allow 5473/tcp
-      "
-
-  if [[ "$NODE" =~ ^"$CP_PREFIX" ]]; then
-    # Regles spé du control plane
-    multipass exec $NODE -- bash -c "
-      
-      # Kubernetes API server (6443) (accessible à tout le range ip du cluster)
-      sudo ufw allow 6443/tcp
-      
-      # etcd (2379-2380)
-      sudo ufw allow 2379:2380/tcp
-      
-      # kubelet API sched kcm
-      sudo ufw allow 10249:10260/tcp
-      
-      sudo ufw enable
-    "
-  else
-    # Règles spé des workers
-    multipass exec $NODE -- bash -c "
-
-      # Autoriser kubelet API (normalement limité à controlplane)
-      sudo ufw allow 10250/tcp
-      
-      # Autoriser kube-proxy (normalement limité à controlplane)
-      sudo ufw allow 10256/tcp
-      
-      # NodePort range (exposé publiquement)
-      sudo ufw allow 30000:32767/tcp
-      sudo ufw allow 30000:32767/udp
-      
-      sudo ufw enable
-    "
-  fi
+  prepare_node "$NODE"
 done
 
 for NODE in "${VMS[@]}"; do
-  prepare_node "$NODE"
+  if [[ $NODE == "${CP_PREFIX}-1" ]]
+
+    CP_IP=$(multipass exec "$CP_NODE" -- hostname -I | awk '{print $1}')
+
+    multipass exec "$CP_NODE" -- bash -c "
+      sudo kubeadm init \
+        --apiserver-advertise-address=$CP_IP \
+        --pod-network-cidr=192.168.0.0/16
+    "
+done
+
+for NODE in "${VMS[@]}"; do
+  if [[ $NODE == "${CP_PREFIX}-1" ]]
+
+    CP_IP=$(multipass exec "$CP_NODE" -- hostname -I | awk '{print $1}')
+
+    multipass exec "$CP_NODE" -- bash -c "
+      sudo kubeadm init \
+        --apiserver-advertise-address=$CP_IP \
+        --pod-network-cidr=192.168.0.0/16
+    "
 done
