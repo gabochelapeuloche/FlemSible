@@ -18,28 +18,63 @@ DISK=15G
 VERBOSE=false
 SNAPSHOT=false
 CONNEXION_TEST=true
+NET_OPT=()
+if [[ -n "${NETWORK:-}" ]]; then
+  NET_OPT=(--network "$NETWORK")
+fi
+
+### Functions
+is_number() {
+  [[ "$1" =~ ^[0-9]+$ ]]
+}
+
+is_storage() {
+  [[ "$1" =~ ^[0-9]{1,4}G ]]
+}
+
+
 
 ### Users customizations
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --cp-number)
       CP_NUMBER="$2"
+      if ! is_number "$CP_NUMBER"; then
+        echo "CP_NUMBER doit être un entier"
+        exit 1
+      fi
       shift 2
       ;;
     --w-number)
       W_NUMBER="$2"
+      if ! is_number "$W_NUMBER"; then
+        echo "W_NUMBER doit être un entier"
+        exit 1
+      fi
       shift 2
       ;;
     --cpus)
       CPUS="$2"
+      if ! is_number "$CPUS"; then
+        echo "CPUS doit être un entier"
+        exit 1
+      fi
       shift 2
       ;;
     --memory)
       MEMORY="$2"
+      if ! is_storage "$MEMORY"; then
+        echo "MEMORY doit être de la forme XG avec X un entier positif"
+        exit 1
+      fi
       shift 2
       ;;
     --disk)
       DISK="$2"
+      if ! is_number "$DISK"; then
+        echo "DISK doit être de la forme XG avec X un entier positif"
+        exit 1
+      fi
       shift 2
       ;;
     --network)
@@ -99,7 +134,8 @@ for NODE in "${VMS[@]}"; do
   --name "$NODE" \
   --cpus "$CPUS" \
   --memory "$MEMORY" \
-  --disk "$DISK"
+  --disk "$DISK" \
+  "${NET_OPT[@]}"
 done
 
 # Tester la communication entre VMs
@@ -143,14 +179,21 @@ fi
 
 # Security groups
 for NODE in "${VMS[@]}"; do
-  if [[ "$NODE" =~ ^"$CP_PREFIX" ]]; then
-    # Regles spé du control plane
     multipass exec $NODE -- bash -c "
       sudo apt update && sudo apt install -y ufw
       sudo ufw --force reset
       sudo ufw default deny incoming
       sudo ufw default allow outgoing
       sudo ufw allow 22/tcp
+      
+      # calico 
+      sudo ufw allow 179/tcp
+      sudo ufw allow 5473/tcp
+      "
+
+  if [[ "$NODE" =~ ^"$CP_PREFIX" ]]; then
+    # Regles spé du control plane
+    multipass exec $NODE -- bash -c "
       
       # Kubernetes API server (6443) (accessible à tout le range ip du cluster)
       sudo ufw allow 6443/tcp
@@ -161,20 +204,11 @@ for NODE in "${VMS[@]}"; do
       # kubelet API sched kcm
       sudo ufw allow 10249:10260/tcp
       
-      # calico
-      sudo ufw allow 179/tcp
-      sudo ufw allow 5473/tcp
-
       sudo ufw enable
     "
   else
     # Règles spé des workers
     multipass exec $NODE -- bash -c "
-      sudo apt update && sudo apt install -y ufw
-      sudo ufw --force reset
-      sudo ufw default deny incoming
-      sudo ufw default allow outgoing
-      sudo ufw allow 22/tcp
 
       # Autoriser kubelet API (normalement limité à controlplane)
       sudo ufw allow 10250/tcp
@@ -185,9 +219,6 @@ for NODE in "${VMS[@]}"; do
       # NodePort range (exposé publiquement)
       sudo ufw allow 30000:32767/tcp
       sudo ufw allow 30000:32767/udp
-
-      # calico
-      sudo ufw allow 179/tcp
       
       sudo ufw enable
     "
