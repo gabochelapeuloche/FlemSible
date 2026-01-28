@@ -32,11 +32,75 @@ is_storage() {
   [[ "$1" =~ ^[0-9]{1,4}G ]]
 }
 
+usage() {
+  cat <<EOF
+Usage: $0 [options]
 
+Options:
+  --cp-number N
+  --w-number N
+  --cpus N
+  --memory SIZE
+  --disk SIZE
+  --verbose
+EOF
+}
+
+prepare_node() {
+  multipass exec "$1" -- bash -c "
+    set -e
+
+    # Désactiver swap
+    sudo swapoff -a
+    sudo sed -i '/ swap / s/^/#/' /etc/fstab
+
+    # Modules kernel
+    sudo modprobe overlay
+    sudo modprobe br_netfilter
+
+    cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+    # Sysctl Kubernetes
+    cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+    sudo sysctl --system
+
+    # Containerd
+    sudo apt update
+    sudo apt install -y containerd
+
+    sudo mkdir -p /etc/containerd
+    sudo containerd config default | sudo tee /etc/containerd/config.toml
+    sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+
+    sudo systemctl restart containerd
+    sudo systemctl enable containerd
+
+    # Kubernetes packages
+    sudo apt install -y apt-transport-https ca-certificates curl
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+    sudo apt update
+    sudo apt install -y kubelet kubeadm kubectl
+    sudo apt-mark hold kubelet kubeadm kubectl
+  "
+}
 
 ### Users customizations
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --help|-h)
+      usage
+      exit 0
+      ;;
     --cp-number)
       CP_NUMBER="$2"
       if ! is_number "$CP_NUMBER"; then
@@ -223,4 +287,8 @@ for NODE in "${VMS[@]}"; do
       sudo ufw enable
     "
   fi
+done
+
+for NODE in "${VMS[@]}"; do
+  prepare_node "$NODE"
 done
