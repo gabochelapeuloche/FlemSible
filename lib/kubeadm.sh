@@ -67,6 +67,10 @@ init_control_plane() {
   CP_NODE="${CP_PREFIX}-1"
   CP_IP=$(multipass exec "$CP_NODE" -- hostname -I | awk '{print $1}')
 
+  mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
   multipass exec "$CP_NODE" -- sudo kubeadm init \
     --apiserver-advertise-address="$CP_IP" \
     --pod-network-cidr="$POD_CIDR"
