@@ -5,83 +5,70 @@
   or control-plane)
 '
 
+verify_node_networking() {
+  local NODE="$1"
+
+  multipass exec "$NODE" -- bash -c '
+    set -e
+
+    for mod in br_netfilter overlay; do
+      lsmod | grep -q "^$mod" || exit 10
+    done
+
+    sysctl -n net.bridge.bridge-nf-call-iptables | grep -qx 1
+    sysctl -n net.bridge.bridge-nf-call-ip6tables | grep -qx 1
+    sysctl -n net.ipv4.ip_forward | grep -qx 1
+  ' || die "$NODE: networking prerequisites not met"
+}
+
 # Function that runs on every node to do the common setup
 prepare_node() {
   local NODE="$1"
-  # Setup
-  
-  log "disabeling swapp"
-  #1# Disable swapp
-  FILE_CONTENT=$(< "$SCRIPT_DIR"/lib/kubeadm-files/disable-swap.sh)
-  multipass exec "$NODE" -- bash -c "$FILE_CONTENT"
-  # Verification
 
+  log "Preparing node $NODE"
 
-  log "forwarding ipv4"
-  #2# Forwarding IPv4 and letting iptables see bridged traffic
-  FILE_CONTENT=$(< "$SCRIPT_DIR"/lib/kubeadm-files/ipv4-forward-iptables.sh)
-  multipass exec "$NODE" -- bash -c "$FILE_CONTENT"
-  # Verification
-  multipass exec "$NODE" -- lsmod | grep br_netfilter
-  multipass exec "$NODE" -- lsmod | grep overlay
-  multipass exec "$NODE" -- sysctl \
-    net.bridge.bridge-nf-call-iptables \
-    net.bridge.bridge-nf-call-ip6tables \
-    net.ipv4.ip_forward
+  for script in \
+    disable-swap \
+    ipv4-forward-iptables \
+    cri \
+    runc \
+    cni \
+    kube \
+    crictl2containerd
+  do
+    log "  → $script"
+    remote_exec "$NODE" "$( < "$SCRIPT_DIR/lib/kubeadm-files/$script.sh" )"
+  done
 
+  log "Verifying networking prerequisites"
+  verify_node_networking "$NODE"
 
-  log "Installing CRI"
-  #3# Install container runtime
-  FILE_CONTENT=$(< "$SCRIPT_DIR"/lib/kubeadm-files/cri.sh)
-  multipass exec "$NODE" -- bash -c "$FILE_CONTENT"
-  # Verification
-  systemctl status containerd # Check that containerd service is up and running
-
-
-  log "Installing runc"
-  #4# Install runc
-  FILE_CONTENT=$(< "$SCRIPT_DIR"/lib/kubeadm-files/runc.sh)
-  multipass exec "$NODE" -- bash -c "$FILE_CONTENT"
-  # Verification
-
-  log "Installing cni pluggin"
-  #5# install cni plugin
-  FILE_CONTENT=$(< "$SCRIPT_DIR"/lib/kubeadm-files/cni.sh)
-  multipass exec "$NODE" -- bash -c "$FILE_CONTENT"
-
-
-  log "Installing kube"
-  #6# Install kubeadm, kubelet and kubectl
-  FILE_CONTENT=$(< "$SCRIPT_DIR"/lib/kubeadm-files/kube.sh)
-  multipass exec "$NODE" -- bash -c "$FILE_CONTENT"
-
-
-  log "Configure crictl"
-  #7# Configure crictl to work with containerd
-  FILE_CONTENT=$(< "$SCRIPT_DIR"/lib/kubeadm-files/crictl2containerd.sh)
-  multipass exec "$NODE" -- bash -c "$FILE_CONTENT"
+  multipass exec "$NODE" -- systemctl is-active --quiet containerd \
+    || die "containerd is not running on $NODE"
 }
 
 # Function that initialize control-plane nodes
 init_control_plane() {
   CP_NODE="${CP_PREFIX}-1"
-  CP_IP=$(multipass exec "$CP_NODE" -- hostname -I | awk '{print $1}')
 
-  mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
+  CP_IP=$(multipass exec "$CP_NODE" -- hostname -I | awk '{print $1}')
 
   multipass exec "$CP_NODE" -- sudo kubeadm init \
     --apiserver-advertise-address="$CP_IP" \
     --pod-network-cidr="$POD_CIDR"
+
+  mkdir -p ~/.kube
+  multipass exec "$CP_NODE" -- sudo cat /etc/kubernetes/admin.conf > ~/.kube/config
+  chmod 600 ~/.kube/config
 }
 
 # Function that initializa worker nodes
 join_workers() {
-  JOIN_CMD=$(multipass exec "$CP_NODE" -- kubeadm token create --print-join-command)
+  JOIN_CMD=$(multipass exec "$CP_NODE" -- sudo kubeadm token create --print-join-command)
 
   for NODE in "${VMS[@]}"; do
     [[ "$NODE" == "$CP_NODE" ]] && continue
-    multipass exec "$NODE" -- sudo $JOIN_CMD
+    log "Joining worker $NODE"
+    multipass exec "$NODE" -- sudo bash -c "$JOIN_CMD"
   done
 }

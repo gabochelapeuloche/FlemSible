@@ -9,36 +9,37 @@ source "$SCRIPT_DIR/lib/multipass.sh"
 source "$SCRIPT_DIR/lib/kubeadm.sh"
 
 log "\nusers customization\n"
+require_cmd multipass
 
 ### Users customizations
-user_inputs $#
+section "user custom"
 
-log "\ncreation des vms\n"
-log "control-plane number: $CP_NUMBER"
-log "workers number: $W_NUMBER"
-log "control-plane prefix: $CP_PREFIX"
-log "worker prefix: $W_PREFIX"
-log "os version: $OS_VERSION"
-log "number of cpus: $CPUS"
-log "memory allocation: $MEMORY"
-log "disk allocation: $DISK"
+user_inputs "$@"
 
-# Création  des vms
-require_cmd multipass
+validate_config
+
+section "Cluster configuration"
+log "Control-plane number : $CP_NUMBER"
+log "Workers number       : $W_NUMBER"
+log "CP prefix            : $CP_PREFIX"
+log "Worker prefix        : $W_PREFIX"
+log "OS version           : $OS_VERSION"
+log "CPUs                 : $CPUS"
+log "Memory               : $MEMORY"
+log "Disk                 : $DISK"
+
+section "creation des vms"
 
 create_vms
 
+section "Preparing nodes"
 for NODE in "${VMS[@]}"; do
-  prepare_node "$NODE"
+  prepare_node "$NODE" &
 done
+wait
 
+section "Kubernetes bootstrap"
 init_control_plane
 join_workers
 
-# for NODE in "${VMS[@]}"; do
-#   init_control_plane
-# done
-
-# for NODE in "${VMS[@]}"; do
-#   join_workers
-# done
+section "Cluster ready 🎉"

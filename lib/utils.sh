@@ -1,75 +1,88 @@
 #!/usr/bin/env bash
 
 : '
-  This bash file contains utilities used for running the programm smoothly
-  and log the process.
+Utilities for logging, error handling and CLI parsing
 '
 
-set -Eeuo pipefail
-
-# A function that prints informations when --verbose option is used
+# Logging (verbose only)
 log() {
-  [[ "$VERBOSE" == true ]] || return 0
+  [[ "${VERBOSE:-false}" == true ]] || return 0
   printf "%b\n" "$*"
 }
 
-# A function that prints an error then exits the program
+section() {
+  log ""
+  log "=== $* ==="
+}
+
+# Error handling
 die() {
-  echo "❌ $*" >&2
+  printf "❌ %b\n" "$*" >&2
   exit 1
 }
 
-# A function that tests for requirements
+# Requirements
 require_cmd() {
   command -v "$1" &>/dev/null || die "$1 n'est pas installé"
 }
 
-# A function that gathers users parameters for customization
+# Helpers
+is_number() {
+  [[ "$1" =~ ^[0-9]+$ ]]
+}
+
+is_storage() {
+  [[ "$1" =~ ^[0-9]+[MG]$ ]]
+}
+
+# Usage
+usage() {
+  cat <<EOF
+Usage: $0 [options]
+
+Options:
+  --cp-number N
+  --w-number N
+  --cpus N
+  --memory XG
+  --disk XG
+  --network NAME
+  --verbose
+  -h, --help
+EOF
+}
+
+# CLI parsing
 user_inputs() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --help|-h)
+      -h|--help)
         usage
         exit 0
         ;;
       --cp-number)
         CP_NUMBER="$2"
-        if ! is_number "$CP_NUMBER"; then
-          echo "CP_NUMBER doit être un entier"
-          exit 1
-        fi
+        is_number "$CP_NUMBER" || die "CP_NUMBER doit être un entier"
         shift 2
         ;;
       --w-number)
         W_NUMBER="$2"
-        if ! is_number "$W_NUMBER"; then
-          echo "W_NUMBER doit être un entier"
-          exit 1
-        fi
+        is_number "$W_NUMBER" || die "W_NUMBER doit être un entier"
         shift 2
         ;;
       --cpus)
         CPUS="$2"
-        if ! is_number "$CPUS"; then
-          echo "CPUS doit être un entier"
-          exit 1
-        fi
+        is_number "$CPUS" || die "CPUS doit être un entier"
         shift 2
         ;;
       --memory)
         MEMORY="$2"
-        if ! is_storage "$MEMORY"; then
-          echo "MEMORY doit être de la forme XG avec X un entier positif"
-          exit 1
-        fi
+        is_storage "$MEMORY" || die "MEMORY doit être de la forme XG"
         shift 2
         ;;
       --disk)
         DISK="$2"
-        if ! is_number "$DISK"; then
-          echo "DISK doit être de la forme XG avec X un entier positif"
-          exit 1
-        fi
+        is_storage "$DISK" || die "DISK doit être de la forme XG"
         shift 2
         ;;
       --network)
@@ -81,9 +94,24 @@ user_inputs() {
         shift
         ;;
       *)
-        echo "Option inconnue : $1"
-        exit 1
-      ;;
+        die "Option inconnue : $1"
+        ;;
     esac
   done
+}
+
+# Global validation
+validate_config() {
+  [[ "$CP_NUMBER" -ge 1 ]] || die "CP_NUMBER must be >= 1"
+  [[ "$W_NUMBER" -ge 0 ]] || die "W_NUMBER must be >= 0"
+}
+
+remote_exec() {
+  local NODE="$1"
+  local SCRIPT="$2"
+
+  multipass exec "$NODE" -- bash -c "
+    set -Eeuo pipefail
+    $SCRIPT
+  "
 }

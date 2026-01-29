@@ -1,24 +1,46 @@
-cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
-overlay
-br_netfilter
-EOF
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-sudo modprobe overlay
-sudo modprobe br_netfilter
+echo "[network] configuring kernel modules and sysctl for Kubernetes"
 
-# sysctl params required by setup, params persist across reboots
-cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-iptables  = 1
-net.bridge.bridge-nf-call-ip6tables = 1
-net.ipv4.ip_forward                 = 1
-EOF
+# Modules à charger
+modules=(overlay br_netfilter)
 
-# Apply sysctl params without reboot
+# Créer le fichier modules-load si nécessaire
+K8S_MODULES_CONF="/etc/modules-load.d/k8s.conf"
+for mod in "${modules[@]}"; do
+  if ! grep -qx "$mod" "$K8S_MODULES_CONF" 2>/dev/null; then
+    echo "$mod" | sudo tee -a "$K8S_MODULES_CONF" >/dev/null
+  fi
+  sudo modprobe "$mod"
+done
+
+# Sysctl parameters required by Kubernetes
+K8S_SYSCTL_CONF="/etc/sysctl.d/k8s.conf"
+declare -A sysctls=(
+  [net.bridge.bridge-nf-call-iptables]=1
+  [net.bridge.bridge-nf-call-ip6tables]=1
+  [net.ipv4.ip_forward]=1
+)
+
+# Write sysctl config idempotently
+for key in "${!sysctls[@]}"; do
+  if ! grep -Eq "^\s*$key\s*=" "$K8S_SYSCTL_CONF" 2>/dev/null; then
+    echo "$key = ${sysctls[$key]}" | sudo tee -a "$K8S_SYSCTL_CONF" >/dev/null
+  fi
+done
+
+# Apply sysctl params immediately
 sudo sysctl --system
 
-# Verify that the br_netfilter, overlay modules are loaded by running the following commands:
-lsmod | grep br_netfilter
-lsmod | grep overlay
+# Verification
+for mod in "${modules[@]}"; do
+  lsmod | grep -q "^$mod" || { echo "❌ Kernel module $mod not loaded"; exit 1; }
+done
 
-# Verify that the net.bridge.bridge-nf-call-iptables, net.bridge.bridge-nf-call-ip6tables, and net.ipv4.ip_forward system variables are set to 1 in your sysctl config by running the following command:
-sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward
+for key in "${!sysctls[@]}"; do
+  value=$(sysctl -n "$key")
+  [[ "$value" == "${sysctls[$key]}" ]] || { echo "❌ $key=$value (expected ${sysctls[$key]})"; exit 1; }
+done
+
+echo "[network] kernel modules and sysctl parameters configured successfully"

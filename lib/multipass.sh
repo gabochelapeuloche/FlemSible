@@ -1,13 +1,22 @@
 #!/usr/bin/env bash
 
 : '
-  This file initialise all the virtual infrastructure that will support
-  the kubernetes cluster
+Virtual infrastructure management using Multipass
 '
 
-source "$SCRIPT_DIR/lib/ufw.sh"
+configure_vm() {
+  local VM="$1"
 
-# function that creates virtual machines for nodes
+  case "$VM" in
+    "$CP_PREFIX"-*)
+      configure_firewall "$VM" "cp" "$CNI"
+      ;;
+    "$W_PREFIX"-*)
+      configure_firewall "$VM" "worker" "$CNI"
+      ;;
+  esac
+}
+
 create_vms() {
   VMS=()
 
@@ -19,37 +28,27 @@ create_vms() {
     VMS+=("$W_PREFIX-$i")
   done
 
-  log "\nCréation des VMs :"
+  log "Creating VMs:"
   for vm in "${VMS[@]}"; do
     log "  - $vm"
   done
 
   for VM in "${VMS[@]}"; do
-    if multipass info "$VM" &>/dev/null; then
-      die "La VM $VM existe déjà"
-    fi
+    multipass info "$VM" &>/dev/null && die "La VM $VM existe déjà"
   done
 
+  # Create all VMs first
   for VM in "${VMS[@]}"; do
     multipass launch "$OS_VERSION" \
       --name "$VM" \
       --cpus "$CPUS" \
       --memory "$MEMORY" \
       --disk "$DISK"
-
-    setup_ufw_common "$VM"
-
-    if [[ "$VM" =~ $CP_PREFIX ]]; then
-      setup_ufw_cp "$VM"
-    fi
-
-    if [[ "$VM" =~ $W_PREFIX ]]; then
-      setup_ufw_worker "$VM"
-    fi
-
-    if [[ "$CNI" == "calico" ]]; then
-      setup_ufw_calico "$VM"
-    fi
-
   done
+
+  # Configure firewall in parallel
+  for VM in "${VMS[@]}"; do
+    configure_vm "$VM" &
+  done
+  wait
 }

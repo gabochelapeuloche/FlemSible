@@ -1,3 +1,4 @@
+# script for installing cri on control plane and worker nodes
 curl -LO https://github.com/containerd/containerd/releases/download/v1.7.14/containerd-1.7.14-linux-amd64.tar.gz
 sudo tar Cxzvf /usr/local containerd-1.7.14-linux-amd64.tar.gz
 curl -LO https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
