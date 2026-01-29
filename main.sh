@@ -91,5 +91,5 @@ for NODE in "${VMS[@]}"; do
   prepare_node "$NODE"
 done
 
-init_control_plane
-join_workers
+# init_control_plane
+# join_workers

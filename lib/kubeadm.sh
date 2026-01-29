@@ -8,18 +8,18 @@
 # Function that runs on every node to do the common setup
 prepare_node() {
   local NODE="$1"
-
   # Setup
-
-
+  
+  log "disabeling swapp"
   #1# Disable swapp
-  FILE_CONTENT=$(< kubeadm-files/disable-swap.sh)
+  FILE_CONTENT=$(< "$SCRIPT_DIR"/lib/kubeadm-files/disable-swap.sh)
   multipass exec "$NODE" -- bash -c "$FILE_CONTENT"
   # Verification
 
 
+  log "forwarding ipv4"
   #2# Forwarding IPv4 and letting iptables see bridged traffic
-  FILE_CONTENT=$(< kubeadm-files/ipv4-forward-iptables.sh)
+  FILE_CONTENT=$(< "$SCRIPT_DIR"/lib/kubeadm-files/ipv4-forward-iptables.sh)
   multipass exec "$NODE" -- bash -c "$FILE_CONTENT"
   # Verification
   multipass exec "$NODE" -- lsmod | grep br_netfilter
@@ -30,31 +30,35 @@ prepare_node() {
     net.ipv4.ip_forward
 
 
+  log "Installing CRI"
   #3# Install container runtime
-  FILE_CONTENT=$(< kubeadm-files/cri.sh)
+  FILE_CONTENT=$(< "$SCRIPT_DIR"/lib/kubeadm-files/cri.sh)
   multipass exec "$NODE" -- bash -c "$FILE_CONTENT"
   # Verification
   systemctl status containerd # Check that containerd service is up and running
 
 
+  log "Installing runc"
   #4# Install runc
-  FILE_CONTENT=$(< kubeadm-files/runc.sh)
+  FILE_CONTENT=$(< "$SCRIPT_DIR"/lib/kubeadm-files/runc.sh)
   multipass exec "$NODE" -- bash -c "$FILE_CONTENT"
   # Verification
 
-
+  log "Installing cni pluggin"
   #5# install cni plugin
-  FILE_CONTENT=$(< kubeadm-files/cni.sh)
+  FILE_CONTENT=$(< "$SCRIPT_DIR"/lib/kubeadm-files/cni.sh)
   multipass exec "$NODE" -- bash -c "$FILE_CONTENT"
 
 
+  log "Installing kube"
   #6# Install kubeadm, kubelet and kubectl
-  FILE_CONTENT=$(< kubeadm-files/kube.sh)
+  FILE_CONTENT=$(< "$SCRIPT_DIR"/lib/kubeadm-files/kube.sh)
   multipass exec "$NODE" -- bash -c "$FILE_CONTENT"
 
 
+  log "Configure crictl"
   #7# Configure crictl to work with containerd
-  FILE_CONTENT=$(< kubeadm-files/crictl2containerd.sh)
+  FILE_CONTENT=$(< "$SCRIPT_DIR"/lib/kubeadm-files/crictl2containerd.sh)
   multipass exec "$NODE" -- bash -c "$FILE_CONTENT"
 }
 
