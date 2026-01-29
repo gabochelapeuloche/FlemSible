@@ -1,0 +1,1 @@
+sudo crictl config runtime-endpoint unix:///var/run/containerd/containerd.sock
