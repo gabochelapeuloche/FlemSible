@@ -23,7 +23,6 @@ This project aims at making kubernetes cluster setup easier. By providing a virt
 │   │   └── runc.sh
 │   ├── kubeadm.sh
 │   ├── multipass.sh
-│   ├── network.sh
 │   ├── ufw.sh
 │   └── utils.sh
 ├── main.sh

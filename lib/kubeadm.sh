@@ -58,17 +58,30 @@ init_control_plane() {
     --pod-network-cidr="$POD_CIDR"
 
   mkdir -p ~/.kube
+  multipass exec "$CP_NODE" -- sudo mkdir -p /root/.kube
   multipass exec "$CP_NODE" -- sudo cat /etc/kubernetes/admin.conf > ~/.kube/config
+  multipass exec "$CP_NODE" -- sudo cp /etc/kubernetes/admin.conf /root/.kube/config
   chmod 600 ~/.kube/config
 }
 
-# Function that initializa worker nodes
 join_workers() {
-  JOIN_CMD=$(multipass exec "$CP_NODE" -- sudo kubeadm token create --print-join-command)
+  CP_NODE="${CP_PREFIX}-1"
 
+  JOIN_CMD=$(multipass exec "$CP_NODE" -- sudo kubeadm token create --print-join-command)
+  
   for NODE in "${VMS[@]}"; do
     [[ "$NODE" == "$CP_NODE" ]] && continue
     log "Joining worker $NODE"
     multipass exec "$NODE" -- sudo bash -c "$JOIN_CMD"
   done
+}
+
+install_calico_operator() {
+  local CP_NODE="${CP_PREFIX}-1"
+
+  log "Installing Calico (Tigera Operator) on $CP_NODE"
+
+  multipass exec "$CP_NODE" -- sudo bash -c "
+    $(< "$SCRIPT_DIR/lib/kubeadm-files/calico.sh")
+  "
 }

@@ -41,6 +41,7 @@ wait
 section "Kubernetes bootstrap"
 init_control_plane
 join_workers
+install_calico_operator
 
 kubectl get nodes -o wide
 section "Cluster ready 🎉"
