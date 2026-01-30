@@ -42,4 +42,5 @@ section "Kubernetes bootstrap"
 init_control_plane
 join_workers
 
+kubectl get nodes -o wide
 section "Cluster ready 🎉"

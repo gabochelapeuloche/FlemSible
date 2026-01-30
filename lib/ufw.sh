@@ -42,6 +42,8 @@ configure_firewall() {
   "
 }
 
-
-
-
+test_firewall() {
+  local VM="$1"
+  local ROLE="$2"
+  local CNI="$3"
+}

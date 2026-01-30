@@ -22,3 +22,4 @@ CNI="calico"
 VERBOSE=false
 SNAPSHOT=false
 CONNEXION_TEST=true
+SET_UP_TEST=true
