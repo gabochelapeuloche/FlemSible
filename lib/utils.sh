@@ -4,24 +4,37 @@
 Utilities for logging, error handling and CLI parsing
 '
 
-# Logging (verbose only)
+
+
+####
+## Logging (verbose only)
+####
 log() {
   [[ "${VERBOSE:-false}" == true ]] || return 0
   printf "%b\n" "$*"
 }
 
+####
+## Visual section for user
+####
 section() {
   log ""
   log "=== $* ==="
 }
 
-# Error handling
+
+
+####
+## Error handling
+####
 die() {
   printf "❌ %b\n" "$*" >&2
   exit 1
 }
 
-# Requirements
+####
+## Requirements
+####
 require_cmd() {
   command -v "$1" &>/dev/null || die "$1 n'est pas installé"
 }

@@ -1,0 +1,1 @@
+# script testing connection between vms and connection between vms and public internet

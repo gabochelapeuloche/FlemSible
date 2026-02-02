@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
-
 set -Eeuo pipefail
+
+: '
+  Main file of the script orchestrating the setup of a virtual kubernetes cluster on
+  ubuntu machines using multipass
+'
+
+####
+## Requirements en script variables
+####
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "$SCRIPT_DIR/config.sh"
@@ -8,10 +17,14 @@ source "$SCRIPT_DIR/lib/utils.sh"
 source "$SCRIPT_DIR/lib/multipass.sh"
 source "$SCRIPT_DIR/lib/kubeadm.sh"
 
-log "\nusers customization\n"
 require_cmd multipass
 
-### Users customizations
+####
+## Multipass VMS setup
+####
+
+log "\nusers customization\n"
+
 section "user custom"
 
 user_inputs "$@"
@@ -37,6 +50,10 @@ for NODE in "${VMS[@]}"; do
   prepare_node "$NODE" &
 done
 wait
+
+####
+## Kubernetes Bootstrap
+####
 
 section "Kubernetes bootstrap"
 init_control_plane
