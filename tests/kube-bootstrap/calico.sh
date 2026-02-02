@@ -1,0 +1,1 @@
+# script testing the presence of healthy calico pods (installed with tigera operator)
