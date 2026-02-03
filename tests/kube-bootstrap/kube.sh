@@ -1,13 +1,34 @@
-sudo apt-get update
-sudo apt-get install -y apt-transport-https ca-certificates curl gpg
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+COMPONENT="kubernetes"
+K8S_VERSION="1.29.6"
+K8S_MINOR="${K8S_VERSION%.*}"
+PKG_VERSION="${K8S_VERSION}-1.1"
 
-sudo apt-get update
-sudo apt-get install -y kubelet=1.29.6-1.1 kubeadm=1.29.6-1.1 kubectl=1.29.6-1.1 --allow-downgrades --allow-change-held-packages
-sudo apt-mark hold kubelet kubeadm kubectl
+APT_KEYRING="/etc/apt/keyrings/kubernetes-apt-keyring.gpg"
+APT_SOURCE="/etc/apt/sources.list.d/kubernetes.list"
 
-kubeadm version
-kubelet --version
-kubectl version --client
+verify() {
+  kubeadm version -o short | grep -q "v${K8S_VERSION}" \
+    || { echo "❌ kubeadm wrong version"; exit 1; }
+
+  kubelet --version | grep -q "v${K8S_VERSION}" \
+    || { echo "❌ kubelet wrong version"; exit 1; }
+
+  kubectl version --client --short | grep -q "v${K8S_VERSION}" \
+    || { echo "❌ kubectl wrong version"; exit 1; }
+
+  systemctl is-enabled kubelet >/dev/null \
+    || { echo "❌ kubelet is not enabled"; exit 1; }
+
+  apt-mark showhold | grep -q kubelet \
+    || { echo "❌ kubelet not held"; exit 1; }
+}
+
+main() {
+  verify
+  echo "[$COMPONENT] OK"
+}
+
+[[ "${BASH_SOURCE[0]}" == "$0" ]] && main "$@"

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-COMPONENT="cni-plugins"
-VERSION="1.5.0"
-BIN_DIR="/opt/cni/bin"
+COMPONENT="containerd"
+VERSION="1.7.14"
 
 verify() {
-  "$BIN_DIR/bridge" --help >/dev/null 2>&1
+  systemctl is-active --quiet containerd
+  containerd --version | grep -q "$VERSION"
 }
 
 main() {
