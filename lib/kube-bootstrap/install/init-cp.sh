@@ -5,10 +5,10 @@ export KUBECONFIG=/etc/kubernetes/admin.conf
 export PAGER=cat
 export KUBECTL_PAGER=cat
 
-COMPONENT="init-control-plane"
-CP_IP="${CP_IP:-}"
-POD_CIDR="${POD_CIDR:-192.168.0.0/16}"
-NODE_NAME="${NODE_NAME:-master}"
+COMPONENT="init-cp"
+NODE_NAME="$CP_PREFIX-1"
+CP_IP=$(multipass exec "$NODE_NAME" -- hostname -I | awk '{print $1}')
+POD_CIDR="$POD_CIDR"
 
 KUBECONFIG="/etc/kubernetes/admin.conf"
 

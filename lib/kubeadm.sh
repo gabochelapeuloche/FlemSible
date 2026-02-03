@@ -30,35 +30,27 @@ prepare_node() {
 
 # Function that initialize control-plane nodes
 init_control_plane() {
-  local CP_NODE="${CP_PREFIX}-1"
-  local CP_IP=$(multipass exec "$CP_NODE" -- hostname -I | awk '{print $1}')
+  NODE_NAME="${CP_PREFIX}-1"
+  CP_IP=$(multipass exec "$NODE_NAME" -- hostname -I | awk '{print $1}')
 
+  log "Initializing control-plane on $NODE_NAME ($CP_IP)"
 
-  log "Initializing control-plane on $CP_NODE ($CP_IP)"
+  run_on_node "$NODE_NAME" \
+    "$SCRIPT_DIR/lib/kube-bootstrap/install/init-cp.sh"
 
-  run_on_node "$CP_NODE" \
-    "$SCRIPT_DIR/lib/kube-bootstrap/install/init-control-plane.sh"
-
-  # multipass exec "$CP_NODE" -- sudo kubeadm init \
+  # multipass exec "$NODE_NAME" -- sudo kubeadm init \
   #   --apiserver-advertise-address="$CP_IP" \
   #   --pod-network-cidr="$POD_CIDR"
 
   mkdir -p ~/.kube
-  multipass exec "$CP_NODE" -- sudo mkdir -p /root/.kube
-  multipass exec "$CP_NODE" -- sudo cat /etc/kubernetes/admin.conf > ~/.kube/config
-  multipass exec "$CP_NODE" -- sudo cp /etc/kubernetes/admin.conf /root/.kube/config
+  multipass exec "$NODE_NAME" -- sudo mkdir -p /root/.kube
+  multipass exec "$NODE_NAME" -- sudo cat /etc/kubernetes/admin.conf > ~/.kube/config
+  multipass exec "$NODE_NAME" -- sudo cp /etc/kubernetes/admin.conf /root/.kube/config
   chmod 600 ~/.kube/config
 }
 
-# init_control_plane() {
-#  \
-#     CP_IP="$CP_IP" \
-#     POD_CIDR="$POD_CIDR" \
-#     NODE_NAME="$CP_NODE"
-# }
-
 join_workers() {
-  CP_NODE="${CP_PREFIX}-1"
+  CP_NODE="$CP_PREFIX-1"
 
   JOIN_CMD=$(multipass exec "$CP_NODE" -- sudo kubeadm token create --print-join-command)
   
