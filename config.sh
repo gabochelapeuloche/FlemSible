@@ -4,6 +4,7 @@
 ## Cluster
 ####
 
+CLUSTER_NAME=test
 CP_NUMBER=1
 W_NUMBER=2
 CP_PREFIX=control-plane

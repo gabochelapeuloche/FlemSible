@@ -22,8 +22,6 @@ section() {
   log "=== $* ==="
 }
 
-
-
 ####
 ## Error handling
 ####
@@ -39,7 +37,9 @@ require_cmd() {
   command -v "$1" &>/dev/null || die "$1 n'est pas installé"
 }
 
-# Helpers
+####
+## Helpers
+####
 is_number() {
   [[ "$1" =~ ^[0-9]+$ ]]
 }
@@ -48,7 +48,9 @@ is_storage() {
   [[ "$1" =~ ^[0-9]+[MG]$ ]]
 }
 
-# Usage
+####
+## Usage
+####
 usage() {
   cat <<EOF
 Usage: $0 [options]
@@ -65,7 +67,9 @@ Options:
 EOF
 }
 
-# CLI parsing
+####
+## CLI parsing
+####
 user_inputs() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -113,12 +117,17 @@ user_inputs() {
   done
 }
 
-# Global validation
+####
+## Global validation
+####
 validate_config() {
   [[ "$CP_NUMBER" -ge 1 ]] || die "CP_NUMBER must be >= 1"
   [[ "$W_NUMBER" -ge 0 ]] || die "W_NUMBER must be >= 0"
 }
 
+####
+##
+####
 remote_exec() {
   local NODE="$1"
   local SCRIPT="$2"
@@ -127,4 +136,20 @@ remote_exec() {
     set -Eeuo pipefail
     $SCRIPT
   "
+}
+
+####
+## Sending entire script then executes it on a vm
+####
+run_on_node() {
+  local NODE="$1"
+  local SCRIPT="$2"
+  local NAME
+
+  NAME="$(basename "$SCRIPT")"
+
+  multipass transfer "$SCRIPT" "$NODE:/tmp/$NAME"
+  multipass exec "$NODE" -- sudo chmod +x "/tmp/$NAME"
+  multipass exec "$NODE" -- sudo bash "/tmp/$NAME"
+  multipass exec "$NODE" -- sudo rm -f "/tmp/$NAME"
 }
