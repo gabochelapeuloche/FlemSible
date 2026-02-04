@@ -5,8 +5,6 @@
   or control-plane)
 '
 
-
-
 # Function that runs on every node to do the common setup
 prepare_node() {
   local NODE="$1"
@@ -23,7 +21,7 @@ prepare_node() {
     kube \
     crictl-containerd
   do
-    log "  → $script"
+    # log "  → $script"
     run_on_node "$NODE" "$SCRIPT_DIR/lib/kube-bootstrap/install/$script.sh"
   done
 }
@@ -38,15 +36,8 @@ init_control_plane() {
   run_on_node "$NODE_NAME" \
     "$SCRIPT_DIR/lib/kube-bootstrap/install/init-cp.sh"
 
-  # multipass exec "$NODE_NAME" -- sudo kubeadm init \
-  #   --apiserver-advertise-address="$CP_IP" \
-  #   --pod-network-cidr="$POD_CIDR"
-
-  mkdir -p ~/.kube
-  multipass exec "$NODE_NAME" -- sudo mkdir -p /root/.kube
-  multipass exec "$NODE_NAME" -- sudo cat /etc/kubernetes/admin.conf > ~/.kube/config
-  multipass exec "$NODE_NAME" -- sudo cp /etc/kubernetes/admin.conf /root/.kube/config
-  chmod 600 ~/.kube/config
+  run_on_node "$NODE_NAME" \
+    "$SCRIPT_DIR/lib/kube-bootstrap/install/kubeconfig.sh"
 }
 
 join_workers() {

@@ -14,7 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "$SCRIPT_DIR/config.sh"
 source "$SCRIPT_DIR/lib/utils.sh"
-source "$SCRIPT_DIR/lib/ufw.sh"
+source "$SCRIPT_DIR/lib/virtual-infrastructure/network-rules.sh"
 source "$SCRIPT_DIR/lib/multipass.sh"
 source "$SCRIPT_DIR/lib/kubeadm.sh"
 source "$SCRIPT_DIR/tests/virtual-infrastructure/network.sh"

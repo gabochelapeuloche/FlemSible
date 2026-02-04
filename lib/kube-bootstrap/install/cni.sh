@@ -15,13 +15,9 @@ install() {
   sudo tar -C "$BIN_DIR" -xzf "cni-plugins-linux-amd64-v${VERSION}.tgz"
 }
 
-verify() {
-  "$BIN_DIR/bridge" --help >/dev/null 2>&1
-}
-
 main() {
   is_installed || install
-  # verify
+  echo "[$COMPONENT] installed and configured"
 }
 
 [[ "${BASH_SOURCE[0]}" == "$0" ]] && main

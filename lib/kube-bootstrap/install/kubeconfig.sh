@@ -2,10 +2,15 @@
 set -Eeuo pipefail
 
 COMPONENT="kubeconfig"
-
 KUBECONFIG_SRC="/etc/kubernetes/admin.conf"
 KUBECONFIG_DIR="$HOME/.kube"
 KUBECONFIG_DST="$KUBECONFIG_DIR/config"
+
+  # mkdir -p ~/.kube
+  # multipass exec "$NODE_NAME" -- sudo mkdir -p /root/.kube
+  # multipass exec "$NODE_NAME" -- sudo cat /etc/kubernetes/admin.conf > ~/.kube/config
+  # multipass exec "$NODE_NAME" -- sudo cp /etc/kubernetes/admin.conf /root/.kube/config
+  # chmod 600 ~/.kube/config
 
 is_installed() {
   [[ -f "$KUBECONFIG_DST" ]] || return 1
@@ -25,21 +30,9 @@ install() {
   chmod 600 "$KUBECONFIG_DST"
 }
 
-verify() {
-  [[ -f "$KUBECONFIG_DST" ]] \
-    || { echo "❌ kubeconfig not found"; exit 1; }
-
-  kubectl version --client >/dev/null \
-    || { echo "❌ kubectl client not working"; exit 1; }
-
-  kubectl cluster-info >/dev/null \
-    || { echo "❌ cannot reach cluster via kubeconfig"; exit 1; }
-}
-
 main() {
   is_installed || install
-  # verify
-  echo "[$COMPONENT] OK"
+  echo "[$COMPONENT] installed and configured"
 }
 
 [[ "${BASH_SOURCE[0]}" == "$0" ]] && main "$@"

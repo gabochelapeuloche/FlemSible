@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+CONFIG_FILE="/etc/k8s-setup.conf"
+
+[[ -f "$CONFIG_FILE" ]] || {
+  echo "❌ missing config file $CONFIG_FILE"
+  exit 1
+}
+
+# shellcheck disable=SC1090
+source "$CONFIG_FILE"
+
 export KUBECONFIG=/etc/kubernetes/admin.conf
 export PAGER=cat
 export KUBECTL_PAGER=cat
 
 COMPONENT="init-cp"
-NODE_NAME="$CP_PREFIX-1"
-CP_IP=$(multipass exec "$NODE_NAME" -- hostname -I | awk '{print $1}')
+NODE_NAME="$(hostname)"
+CP_IP="$(hostname -I | awk '{print $1}')"
 POD_CIDR="$POD_CIDR"
 
 KUBECONFIG="/etc/kubernetes/admin.conf"
@@ -29,30 +39,9 @@ install() {
     --ignore-preflight-errors=all
 }
 
-verify() {
-  echo "[$COMPONENT] verifying control-plane"
-
-  [[ -f "$KUBECONFIG" ]] || { echo "❌ $KUBECONFIG not found"; exit 1; }
-
-  kubectl get pods -n kube-system \
-    | grep kube-apiserver | grep -q Running \
-    || { echo "❌ kube-apiserver not running"; exit 1; }
-
-  local failed
-  failed=$(kubectl get pods -n kube-system \
-    --field-selector=status.phase!=Running,status.phase!=Succeeded \
-    --no-headers | wc -l)
-  [[ "$failed" -eq 0 ]] || { echo "❌ some kube-system pods are not healthy"; exit 1; }
-
-  local ready
-  ready=$(kubectl get nodes --no-headers | awk '{print $2}' | grep -c Ready)
-  [[ "$ready" -ge 1 ]] || { echo "❌ control-plane node not Ready"; exit 1; }
-}
-
 main() {
   is_installed || install
-#   verify
-  echo "[$COMPONENT] OK"
+  echo "[$COMPONENT] installed and configured"
 }
 
 [[ "${BASH_SOURCE[0]}" == "$0" ]] && main "$@"

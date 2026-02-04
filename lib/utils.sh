@@ -4,8 +4,6 @@
 Utilities for logging, error handling and CLI parsing
 '
 
-
-
 ####
 ## Logging (verbose only)
 ####
@@ -142,14 +140,24 @@ remote_exec() {
 ## Sending entire script then executes it on a vm
 ####
 run_on_node() {
+
   local NODE="$1"
   local SCRIPT="$2"
   local NAME
 
   NAME="$(basename "$SCRIPT")"
 
+  multipass transfer "$SCRIPT_DIR/config.sh" "$NODE:/tmp/k8s-setup.conf"
+  multipass exec "$NODE" -- sudo mv /tmp/k8s-setup.conf /etc/k8s-setup.conf
+  multipass exec "$NODE" -- sudo chmod 644 /etc/k8s-setup.conf
+  
   multipass transfer "$SCRIPT" "$NODE:/tmp/$NAME"
   multipass exec "$NODE" -- sudo chmod +x "/tmp/$NAME"
   multipass exec "$NODE" -- sudo bash "/tmp/$NAME"
+  multipass exec "$NODE" -- sudo rm -f "/tmp/$NAME"
+}
+
+clean_node() {
+  local NODE="$1"
   multipass exec "$NODE" -- sudo rm -f "/tmp/$NAME"
 }

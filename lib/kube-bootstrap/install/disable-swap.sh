@@ -16,17 +16,9 @@ apply () {
   fi
 }
 
-verify () {
-  if swapon --summary | grep -q .; then
-    echo "❌ swap is still enabled"
-    exit 1
-  fi
-}
-
 main () {
   is_applied || apply
-  # verify
-  echo "[$COMPONENT] OK"
+  echo "[$COMPONENT] installed and configured"
 }
 
 [[ "${BASH_SOURCE[0]}" == "$0" ]] && main "$@"

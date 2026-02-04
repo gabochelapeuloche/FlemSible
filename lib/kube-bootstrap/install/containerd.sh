@@ -24,14 +24,9 @@ install() {
   sudo systemctl enable --now containerd
 }
 
-verify() {
-  systemctl is-active --quiet containerd
-  containerd --version | grep -q "$VERSION"
-}
-
 main() {
   is_installed || install
-  # verify
+  echo "[$COMPONENT] installed and configured"
 }
 
 [[ "${BASH_SOURCE[0]}" == "$0" ]] && main

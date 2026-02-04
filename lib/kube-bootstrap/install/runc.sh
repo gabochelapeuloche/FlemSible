@@ -17,14 +17,9 @@ install() {
   sudo install -m 755 runc.amd64 "$BIN_PATH"
 }
 
-verify() {
-  "$BIN_PATH" --version | grep -q "runc version $VERSION"
-}
-
 main() {
   is_installed || install
-  # verify
-  echo "[$COMPONENT] OK"
+  echo "[$COMPONENT] installed and configured"
 }
 
 [[ "${BASH_SOURCE[0]}" == "$0" ]] && main "$@"

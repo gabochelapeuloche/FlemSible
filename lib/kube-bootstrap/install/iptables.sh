@@ -4,9 +4,7 @@ set -Eeuo pipefail
 COMPONENT="iptables-bridge"
 MODULES_CONF="/etc/modules-load.d/k8s-netfilter.conf"
 SYSCTL_CONF="/etc/sysctl.d/99-k8s-iptables.conf"
-
 MODULES=(br_netfilter overlay)
-
 SYSCTLS=(
   net.bridge.bridge-nf-call-iptables=1
   net.bridge.bridge-nf-call-ip6tables=1
@@ -45,14 +43,9 @@ install() {
   sudo sysctl --system >/dev/null
 }
 
-verify() {
-  is_installed || { echo "❌ netfilter / iptables bridge not configured"; exit 1; }
-}
-
 main() {
   is_installed || install
-  # verify
-  echo "[$COMPONENT] OK"
+  echo "[$COMPONENT] installed and configured"
 }
 
 [[ "${BASH_SOURCE[0]}" == "$0" ]] && main "$@"

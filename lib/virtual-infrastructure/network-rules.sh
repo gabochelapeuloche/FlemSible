@@ -12,6 +12,8 @@ configure_firewall() {
   multipass exec "$VM" -- bash -c "
     set -e
 
+    COMPONENT="ufw"
+
     sudo apt update
     sudo apt install -y ufw
 
@@ -38,7 +40,12 @@ configure_firewall() {
       sudo ufw allow 5473/tcp
     fi
 
-    sudo ufw enable
+    sudo ufw --force enable
+
+    sudo ufw status verbose | grep -q "Status: active" \
+    || { echo "❌ UFW not active"; exit 1; }
+
+    echo "[$COMPONENT] OK"
   "
 }
 

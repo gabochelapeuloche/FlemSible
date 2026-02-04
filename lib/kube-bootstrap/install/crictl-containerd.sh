@@ -19,18 +19,9 @@ install() {
   sudo crictl config runtime-endpoint "$RUNTIME_ENDPOINT"
 }
 
-verify() {
-  is_installed || { echo "crictl not installed"; exit 1; }
-
-  is_configured || { echo "crictl misconfigured"; exit 1; }
-
-  crictl info >/dev/null
-}
-
 main() {
   is_configured || install
-  # verify
-  echo "[$COMPONENT] OK"
+  echo "[$COMPONENT] installed and configured"
 }
 
 [[ "${BASH_SOURCE[0]}" == "$0" ]] && main "$@"

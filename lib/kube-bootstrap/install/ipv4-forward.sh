@@ -18,15 +18,9 @@ install() {
   sudo sysctl -w net.ipv4.ip_forward=1 >/dev/null
 }
 
-verify() {
-  [[ "$(sysctl -n net.ipv4.ip_forward)" == "1" ]] \
-    || { echo "❌ IPv4 forwarding is disabled"; exit 1; }
-}
-
 main() {
   is_installed || install
-  # verify
-  echo "[$COMPONENT] OK"
+  echo "[$COMPONENT] installed and configured"
 }
 
 [[ "${BASH_SOURCE[0]}" == "$0" ]] && main "$@"
