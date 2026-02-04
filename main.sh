@@ -18,6 +18,7 @@ source "$SCRIPT_DIR/lib/virtual-infrastructure/network-rules.sh"
 source "$SCRIPT_DIR/lib/multipass.sh"
 source "$SCRIPT_DIR/lib/kubeadm.sh"
 source "$SCRIPT_DIR/tests/virtual-infrastructure/network.sh"
+source "$SCRIPT_DIR"/lib/kube-bootstrap/install/host-config.sh
 
 require_cmd multipass
 
@@ -65,9 +66,21 @@ wait
 ####
 
 section "Kubernetes bootstrap"
-init_control_plane
-join_workers
-install_calico_operator
+sleep 1
 
+init_control_plane
+sleep 1
+
+export_kubeconfig_to_host
+mkdir -p ~/.kube
+cp kubeconfig/test.conf ~/.kube/config
+chmod 600 ~/.kube/config
+kubectl get nodes
+sleep 1
+
+join_workers
+sleep 1
+
+install_calico_operator
 kubectl get nodes -o wide
 section "Cluster ready 🎉"

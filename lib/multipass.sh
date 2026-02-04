@@ -5,6 +5,9 @@ Virtual infrastructure management using Multipass
 '
 
 configure_vm() {
+  # functions that calls the function for vm firewall config
+  # and passes if vm is worker or control-plane
+
   local VM="$1"
 
   case "$VM" in
@@ -18,6 +21,9 @@ configure_vm() {
 }
 
 create_vms() {
+  # function that creates vms (control-planes)and workers
+  # leveraging multipass
+
   VMS=()
 
   for ((i=1; i<=CP_NUMBER; i++)); do
@@ -28,13 +34,13 @@ create_vms() {
     VMS+=("$W_PREFIX-$i")
   done
 
+  for VM in "${VMS[@]}"; do
+    multipass info "$VM" &>/dev/null && die "La VM $VM existe déjà"
+  done
+
   log "Creating VMs:"
   for vm in "${VMS[@]}"; do
     log "  - $vm"
-  done
-
-  for VM in "${VMS[@]}"; do
-    multipass info "$VM" &>/dev/null && die "La VM $VM existe déjà"
   done
 
   # Create all VMs first
@@ -44,11 +50,13 @@ create_vms() {
       --cpus "$CPUS" \
       --memory "$MEMORY" \
       --disk "$DISK"
+    sleep 2
   done
 
   # Configure firewall in parallel
   for VM in "${VMS[@]}"; do
     configure_vm "$VM" &
+    sleep 2
   done
   wait
 }

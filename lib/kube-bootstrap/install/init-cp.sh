@@ -8,7 +8,6 @@ CONFIG_FILE="/etc/k8s-setup.conf"
   exit 1
 }
 
-# shellcheck disable=SC1090
 source "$CONFIG_FILE"
 
 export KUBECONFIG=/etc/kubernetes/admin.conf
@@ -37,6 +36,9 @@ install() {
     --pod-network-cidr="$POD_CIDR" \
     --node-name "$NODE_NAME" \
     --ignore-preflight-errors=all
+    &> /tmp/kubeadm-init.log
+  
+  # kubectl --kubeconfig=/etc/kubernetes/admin.conf
 }
 
 main() {

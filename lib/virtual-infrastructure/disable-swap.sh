@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
+
+: '
+  Disabling swap for kubernetes
+'
 set -Eeuo pipefail
 
 COMPONENT="swapoff"
 
 is_applied () {
+  # Function checking if swap is already off
   swapon --summary | grep -q .
 }
 
 apply () {
+  # Disabeleing swap
   if swapon --summary | grep -q .; then
     sudo swapoff -a
   fi

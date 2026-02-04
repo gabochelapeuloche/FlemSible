@@ -5,14 +5,13 @@ Firewall configuration for Kubernetes nodes (UFW)
 '
 
 configure_firewall() {
+  # function that sets ufw rules depending on node role
   local VM="$1"
   local ROLE="$2"   # cp | worker
   local CNI="$3"
 
   multipass exec "$VM" -- bash -c "
     set -e
-
-    COMPONENT="ufw"
 
     sudo apt update
     sudo apt install -y ufw
@@ -45,12 +44,6 @@ configure_firewall() {
     sudo ufw status verbose | grep -q "Status: active" \
     || { echo "❌ UFW not active"; exit 1; }
 
-    echo "[$COMPONENT] OK"
+    echo "firewall OK"
   "
-}
-
-test_firewall() {
-  local VM="$1"
-  local ROLE="$2"
-  local CNI="$3"
 }

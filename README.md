@@ -6,59 +6,55 @@ Tired of setting up k8s cluster in vms on your PC ?
 
 This project aims at making kubernetes cluster setup easier. By providing a virtual infrastructure of different vms, deploying security rules and installing the right software for a healthy running cluster. It leverages multipass and kubeadm within other softwares.
 
-## Project tree :
+## Project tree
+
 .
-├── all-script.sh
 ├── config.sh
+├── kubeconfig
+│   └── test.conf
 ├── lib
-│   ├── kubeadm-files
-│   │   ├── calico.sh
-│   │   ├── cni.sh
-│   │   ├── crictl2containerd.sh
-│   │   ├── cri.sh
-│   │   ├── disable-swap.sh
-│   │   ├── init-cp.sh
-│   │   ├── ipv4-forward-iptables.sh
-│   │   ├── kubeconfig.sh
-│   │   ├── kube.sh
-│   │   └── runc.sh
 │   ├── kubeadm.sh
 │   ├── kube-bootstrap
-│   │   ├── downgrade
-│   │   ├── install
-│   │   ├── uninstall
-│   │   ├── update
-│   │   ├── upgrade
-│   │   ├── versions.csv
-│   │   └── versions.json
+│   │   └── install
+│   │       ├── calico.sh
+│   │       ├── cni.sh
+│   │       ├── containerd.sh
+│   │       ├── crictl-containerd.sh
+│   │       ├── host-config.sh
+│   │       ├── init-cp.sh
+│   │       ├── kube.sh
+│   │       └── runc.sh
 │   ├── multipass.sh
-│   ├── ufw.sh
 │   ├── utils.sh
 │   └── virtual-infrastructure
+│       ├── disable-swap.sh
+│       ├── iptables.sh
+│       ├── ipv4-forward.sh
+│       └── network-rules.sh
 ├── logs
 │   ├── kube-bootstrap
 │   ├── run
 │   └── virtual-infrastructure
 ├── main.sh
 ├── README.md
-└── tests
-    ├── kube-bootstrap
-    │   ├── calico copy.sh
-    │   ├── cni.sh
-    │   ├── crictl2containerd.sh
-    │   ├── cri.sh
-    │   ├── disable-swap.sh
-    │   ├── init-cp.sh
-    │   ├── ipv4-forward-iptables.sh
-    │   ├── kubeconfig.sh
-    │   ├── kube.sh
-    │   └── runc.sh
-    ├── script-config
-    │   └── validate_config.sh
-    └── virtual-infrastructure
-        ├── infra.sh
-        └── network.sh
+├── tests
+│   ├── kube-bootstrap
+│   │   ├── calico.sh
+│   │   ├── cni.sh
+│   │   ├── containerd.sh
+│   │   ├── crictl-containerd.sh
+│   │   ├── init-cp.sh
+│   │   ├── iptables.sh
+│   │   ├── ipv4-forward.sh
+│   │   ├── kubeconfig.sh
+│   │   ├── kube.sh
+│   │   ├── runc.sh
+│   │   └── swapp.sh
+│   ├── script-config
+│   │   └── validate_config.sh
+│   └── virtual-infrastructure
+│       ├── infra.sh
+│       └── network.sh
+└── versions.json
 
-18 directories, 33 files
-
-##
+14 directories, 34 files

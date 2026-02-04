@@ -4,52 +4,47 @@
 Utilities for logging, error handling and CLI parsing
 '
 
-####
-## Logging (verbose only)
-####
 log() {
+  # logging for verbose option
   [[ "${VERBOSE:-false}" == true ]] || return 0
   printf "%b\n" "$*"
 }
 
-####
-## Visual section for user
-####
 section() {
+  # Visual section for user when verbose option is used
   log ""
   log "=== $* ==="
 }
 
-####
-## Error handling
-####
 die() {
+  # Error handling function
   printf "❌ %b\n" "$*" >&2
   exit 1
 }
 
-####
-## Requirements
-####
 require_cmd() {
+  # Requirements check function
   command -v "$1" &>/dev/null || die "$1 n'est pas installé"
 }
 
-####
-## Helpers
-####
 is_number() {
+  # Helper checking if an arg conforms to number
   [[ "$1" =~ ^[0-9]+$ ]]
 }
 
 is_storage() {
+  # Helper checking if an arg conforms to storage
   [[ "$1" =~ ^[0-9]+[MG]$ ]]
 }
 
-####
-## Usage
-####
+validate_config() {
+  # Global validation
+  [[ "$CP_NUMBER" -ge 1 ]] || die "CP_NUMBER must be >= 1"
+  [[ "$W_NUMBER" -ge 0 ]] || die "W_NUMBER must be >= 0"
+}
+
 usage() {
+  # Usage printing when help option is used
   cat <<EOF
 Usage: $0 [options]
 
@@ -65,10 +60,8 @@ Options:
 EOF
 }
 
-####
-## CLI parsing
-####
 user_inputs() {
+  # CLI options parsing
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -h|--help)
@@ -115,18 +108,8 @@ user_inputs() {
   done
 }
 
-####
-## Global validation
-####
-validate_config() {
-  [[ "$CP_NUMBER" -ge 1 ]] || die "CP_NUMBER must be >= 1"
-  [[ "$W_NUMBER" -ge 0 ]] || die "W_NUMBER must be >= 0"
-}
-
-####
-##
-####
 remote_exec() {
+  # executiong a script directly on a vm through multipass exec
   local NODE="$1"
   local SCRIPT="$2"
 
@@ -136,10 +119,8 @@ remote_exec() {
   "
 }
 
-####
-## Sending entire script then executes it on a vm
-####
 run_on_node() {
+  # Loading a script on a multipass vm then executing it
 
   local NODE="$1"
   local SCRIPT="$2"
@@ -158,6 +139,7 @@ run_on_node() {
 }
 
 clean_node() {
+  # cleaning remaning setups scripts
   local NODE="$1"
   multipass exec "$NODE" -- sudo rm -f "/tmp/$NAME"
 }

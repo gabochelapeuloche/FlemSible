@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+: '
+  Managing iptables for kubernetes
+'
 set -Eeuo pipefail
 
 COMPONENT="iptables-bridge"
@@ -10,7 +14,8 @@ SYSCTLS=(
   net.bridge.bridge-nf-call-ip6tables=1
 )
 
-is_installed() {
+is_applied() {
+  # function checking if iptables parameters are already in the target state
   for mod in "${MODULES[@]}"; do
     lsmod | grep -q "^$mod" || return 1
   done
@@ -22,7 +27,8 @@ is_installed() {
   done
 }
 
-install() {
+apply() {
+  # function setting up the iptable state
   echo "[network] configuring netfilter and iptables bridge"
 
   for mod in "${MODULES[@]}"; do
@@ -44,7 +50,7 @@ install() {
 }
 
 main() {
-  is_installed || install
+  is_applied || apply
   echo "[$COMPONENT] installed and configured"
 }
 

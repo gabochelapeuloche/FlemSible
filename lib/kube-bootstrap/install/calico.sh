@@ -13,7 +13,9 @@ is_installed() {
 
 install() {
   echo "[$COMPONENT] installing Tigera Operator"
-
+  
+  export KUBECONFIG=/etc/kubernetes/admin.conf
+  
   kubectl create -f "$OPERATOR_URL" || true
   kubectl rollout status deployment/tigera-operator \
     -n tigera-operator \
