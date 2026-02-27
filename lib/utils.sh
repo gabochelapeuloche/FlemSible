@@ -125,47 +125,47 @@ remote_exec() {
 }
 
 run_on_node() {
-  # Loading a script on a multipass vm then executing it
-
-  local NODE="$1"
-  local SCRIPT="$2"
-  local NAME
-
-  NAME="$(basename "$SCRIPT")"
-
-  multipass transfer "$SCRIPT_DIR/config.sh" "$NODE:/tmp/k8s-setup.conf"
-  multipass exec "$NODE" -- sudo mv /tmp/k8s-setup.conf /etc/k8s-setup.conf
-  multipass exec "$NODE" -- sudo chmod 644 /etc/k8s-setup.conf
-  
-  multipass transfer "$SCRIPT" "$NODE:/tmp/$NAME"
-  multipass exec "$NODE" -- sudo chmod +x "/tmp/$NAME"
-  multipass exec "$NODE" -- sudo bash "/tmp/$NAME"
-  multipass exec "$NODE" -- sudo rm -f "/tmp/$NAME"
-}
-
-run_on_node() {
   local NODE="$1"
   local SRC="$2"
-  local MAPPINGS="${3:-}" # Le :- permet de définir une chaîne vide par défaut
+  local MAPPINGS="${3:-}"
   
   local NAME=$(basename "$SRC")
-local TMP="/tmp/${NODE}_ready_${NAME}"
+  # Création d'un sous-dossier de travail pour plus de propreté
+  local WORK_DIR="$SCRIPT_DIR/tmp/k8s-deploy-$(id -u)"
+  mkdir -p "$WORK_DIR"
   
-  # Copy the source to a temp file
+  local TMP="$WORK_DIR/${NODE}_${NAME}"
+  
+  # 1. Préparation
   cp "$SRC" "$TMP"
 
-  # For each mapping passed in, use sed to replace it in the temp file
-  for map in $MAPPINGS; do
-    local key="${map%%=*}"
-    local value="${map##*=}"
-    # This replaces the literal string 'JSONVALUE' in your script 
-    # based on the variable name you target.
-    sed -i "s|$key=\"JSONVALUE\"|$key=\"$value\"|g" "$TMP"
-  done
+  # 2. Injection
+  if [[ -n "$MAPPINGS" ]]; then
+    for map in $MAPPINGS; do
+      local key="${map%%=*}"
+      local value="${map##*=}"
+      sed -i "s|$key=\"JSONVALUE\"|$key=\"$value\"|g" "$TMP"
+    done
+  fi
 
-  multipass transfer "$TMP" "$NODE:/tmp/$NAME"
-  multipass exec "$NODE" -- sudo bash "/tmp/$NAME"
-  rm "$TMP"
+  # 3. Transfert avec vérification
+  if [[ -f "$TMP" ]]; then
+    # On laisse un micro-délai pour éviter les collisions I/O
+    sleep 0.2
+    multipass exec "$NODE" -- mkdir -p "/tmp/"
+    multipass transfer "$TMP" "$NODE:/tmp/$NAME"
+    multipass exec "$NODE" -- sudo chmod +x "/tmp/$NAME"
+    multipass exec "$NODE" -- sudo bash "/tmp/$NAME"
+    
+    # 4. Nettoyage DIFFÉRÉ
+    # On ne supprime le fichier local QUE quand on est sûr 
+    # que l'exécution distante est lancée ou terminée.
+    # rm -f "$TMP"
+    # multipass exec "$NODE" -- rm -f "/tmp/$NAME"
+  else
+    echo "❌ Erreur : Fichier source $TMP manquant"
+    return 1
+  fi
 }
 
 clean_node() {
