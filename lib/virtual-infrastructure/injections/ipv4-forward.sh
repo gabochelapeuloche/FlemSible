@@ -1,8 +1,8 @@
+# Activating ipv4 forwarding on both control-plane and worker nodes
+# This script will need to be executed directly on the host
+
 #!/usr/bin/env bash
 
-: '
-  Managing ipv4 forwarding for kubernetes
-'
 set -Eeuo pipefail
 
 COMPONENT="ipv4-forwarding"

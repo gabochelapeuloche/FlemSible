@@ -1,3 +1,5 @@
+# Performing runc installation on both control-plane and worker nodes
+
 #!/usr/bin/env bash
 set -Eeuo pipefail
 

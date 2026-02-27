@@ -1,8 +1,13 @@
+# Setting up cni plugin on both conrtol-plane and worker nodes
+# This script will need to be executed directly on the host
+
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
 COMPONENT="cni-plugins"
 VERSION="1.5.0"
+URL=""
+FILE=""
 BIN_DIR="/opt/cni/bin"
 
 is_installed() {

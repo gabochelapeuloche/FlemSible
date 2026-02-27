@@ -68,37 +68,42 @@ user_inputs() {
         usage
         exit 0
         ;;
+      --version)
+        K8S_VERSION="$2"
+        # is_number "$CP_NUMBER" || die "CP_NUMBER doit être un entier"
+        shift 2
+        ;;
       --cp-number)
-        CP_NUMBER="$2"
+        CP_NUMBER_USER="$2"
         is_number "$CP_NUMBER" || die "CP_NUMBER doit être un entier"
         shift 2
         ;;
       --w-number)
-        W_NUMBER="$2"
+        W_NUMBER_USER="$2"
         is_number "$W_NUMBER" || die "W_NUMBER doit être un entier"
         shift 2
         ;;
       --cpus)
-        CPUS="$2"
+        CPUS_USER="$2"
         is_number "$CPUS" || die "CPUS doit être un entier"
         shift 2
         ;;
       --memory)
-        MEMORY="$2"
+        MEMORY_USER="$2"
         is_storage "$MEMORY" || die "MEMORY doit être de la forme XG"
         shift 2
         ;;
       --disk)
-        DISK="$2"
+        DISK_USER="$2"
         is_storage "$DISK" || die "DISK doit être de la forme XG"
         shift 2
         ;;
       --network)
-        NETWORK="$2"
+        NETWORK_USER="$2"
         shift 2
         ;;
       --verbose)
-        VERBOSE=true
+        VERBOSE_USER=true
         shift
         ;;
       *)
@@ -138,8 +143,99 @@ run_on_node() {
   multipass exec "$NODE" -- sudo rm -f "/tmp/$NAME"
 }
 
+run_on_node() {
+  local NODE="$1"
+  local SRC="$2"
+  local MAPPINGS="${3:-}" # Le :- permet de définir une chaîne vide par défaut
+  
+  local NAME=$(basename "$SRC")
+local TMP="/tmp/${NODE}_ready_${NAME}"
+  
+  # Copy the source to a temp file
+  cp "$SRC" "$TMP"
+
+  # For each mapping passed in, use sed to replace it in the temp file
+  for map in $MAPPINGS; do
+    local key="${map%%=*}"
+    local value="${map##*=}"
+    # This replaces the literal string 'JSONVALUE' in your script 
+    # based on the variable name you target.
+    sed -i "s|$key=\"JSONVALUE\"|$key=\"$value\"|g" "$TMP"
+  done
+
+  multipass transfer "$TMP" "$NODE:/tmp/$NAME"
+  multipass exec "$NODE" -- sudo bash "/tmp/$NAME"
+  rm "$TMP"
+}
+
 clean_node() {
   # cleaning remaning setups scripts
   local NODE="$1"
   multipass exec "$NODE" -- sudo rm -f "/tmp/$NAME"
+}
+
+load_versions() {
+  # loading global variables to feed to the script
+  get_version_info "$K8S_VERSION"
+}
+
+get_version_info() {
+    local VERSION=$1
+    local JSON_FILE="$SCRIPT_DIR/versions.json"
+
+    if [[ ! -f "$JSON_FILE" ]]; then
+        die "Fichier versions.json introuvable."
+    fi
+
+    # Informations about virtual layer
+    # Control-plane
+    local JSON_PATH=".\"$VERSION\".\"virtual-layer\".\"control-plane\""
+    CP_PREFIX=$(jq -r "$JSON_PATH.name" "$JSON_FILE")
+    CP_NUMBER=$(jq -r "$JSON_PATH.count" "$JSON_FILE")
+    CP_OPEN_PORTS=$(jq -r "$JSON_PATH.ports // []" "$JSON_FILE")
+    CP_OS_VERSION=$(jq -r "$JSON_PATH.\"os-version\"" "$JSON_FILE")
+    CP_CPUS=$(jq -r "$JSON_PATH.cpus" "$JSON_FILE")
+    CP_MEMORY=$(jq -r "$JSON_PATH.memory" "$JSON_FILE")
+    CP_DISK=$(jq -r "$JSON_PATH.disk" "$JSON_FILE")
+
+    # Worker
+    local JSON_PATH=".\"$VERSION\".\"virtual-layer\".worker"
+    W_PREFIX=$(jq -r "$JSON_PATH.name" "$JSON_FILE")
+    W_NUMBER=$(jq -r "$JSON_PATH.count" "$JSON_FILE")
+    W_OPEN_PORTS=$(jq -r "$JSON_PATH.ports // []" "$JSON_FILE")
+    W_OS_VERSION=$(jq -r "$JSON_PATH.\"os-version\"" "$JSON_FILE")
+    W_CPUS=$(jq -r "$JSON_PATH.cpus" "$JSON_FILE")
+    W_MEMORY=$(jq -r "$JSON_PATH.memory" "$JSON_FILE")
+    W_DISK=$(jq -r "$JSON_PATH.disk" "$JSON_FILE")
+
+    # Extraction des infos Kubernetes
+    local JSON_PATH=".\"$VERSION\".kubernetes"
+    K8S_MINOR=$(jq -r "$JSON_PATH.minor" "$JSON_FILE")
+    K8S_PATCH=$(jq -r "$JSON_PATH.patch" "$JSON_FILE")
+    K8S_PKG_VERSION=$(jq -r "$JSON_PATH.pkg_version" "$JSON_FILE")
+    K8S_REPO=$(jq -r "$JSON_PATH.repo_url" "$JSON_FILE")
+
+    # Extraction des composants
+    # container-runtime
+    local JSON_PATH=".\"$VERSION\".components.\"container-runtime\".containerd"
+    CONTAINERD_VERSION=$(jq -r "$JSON_PATH.version" "$JSON_FILE")
+    CONTAINERD_URL=$(jq -r "$JSON_PATH.url" "$JSON_FILE")
+    
+    # runc
+    local JSON_PATH=".\"$VERSION\".components.runc"
+    RUNC_VERSION=$(jq -r "$JSON_PATH.version" "$JSON_FILE")
+    RUNC_URL=$(jq -r "$JSON_PATH.url" "$JSON_FILE")
+
+    # cni-plugin
+    local JSON_PATH=".\"$VERSION\".components.\"cni-plugin\""
+    CNI_VERSION=$(jq -r "$JSON_PATH.version" "$JSON_FILE")
+    CNI_URL=$(jq -r "$JSON_PATH.url" "$JSON_FILE")
+    
+    # network-plugin
+    local JSON_PATH=".\"$VERSION\".components.\"network-plugins\".calico"
+    CNI="calico"
+    CALICO_VERSION=$(jq -c "$JSON_PATH.version" "$JSON_FILE")
+    CALICO_CRD_URL=$(jq -c "$JSON_PATH.\"tigera-operator\"" "$JSON_FILE")
+    CALICO_TIGERA_OPERATOR=$(jq -c "$JSON_PATH.\"crd-url\"" "$JSON_FILE")
+    CALICO_OPEN_PORTS=$(jq -c "$JSON_PATH.ports // []" "$JSON_FILE")
 }

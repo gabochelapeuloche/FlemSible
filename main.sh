@@ -12,13 +12,13 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-source "$SCRIPT_DIR/config.sh"
 source "$SCRIPT_DIR/lib/utils.sh"
-source "$SCRIPT_DIR/lib/virtual-infrastructure/network-rules.sh"
-source "$SCRIPT_DIR/lib/multipass.sh"
-source "$SCRIPT_DIR/lib/kubeadm.sh"
-source "$SCRIPT_DIR/tests/virtual-infrastructure/network.sh"
-source "$SCRIPT_DIR"/lib/kube-bootstrap/install/host-config.sh
+
+source "$SCRIPT_DIR/lib/virtual-infrastructure/injections/network-rules.sh"
+source "$SCRIPT_DIR/lib/virtual-infrastructure/vm-provisionning.sh"
+
+source "$SCRIPT_DIR/lib/kube-bootstrap/node-bootstrap.sh"
+# source "$SCRIPT_DIR/lib/kube-bootstrap/injections/host-config.sh"
 
 require_cmd multipass
 
@@ -32,17 +32,24 @@ section "user custom"
 
 user_inputs "$@"
 
+# Initialisation des variables à partir du JSON
+get_version_info "$K8S_VERSION"
+
 validate_config
 
+
+
 section "Cluster configuration"
-log "Control-plane number : $CP_NUMBER"
-log "Workers number       : $W_NUMBER"
-log "CP prefix            : $CP_PREFIX"
-log "Worker prefix        : $W_PREFIX"
-log "OS version           : $OS_VERSION"
-log "CPUs                 : $CPUS"
-log "Memory               : $MEMORY"
-log "Disk                 : $DISK"
+# log "Control-plane number : $CP_NUMBER"
+# log "Workers number       : $W_NUMBER"
+# log "CP prefix            : $CP_PREFIX"
+# log "Worker prefix        : $W_PREFIX"
+# log "OS version           : $OS_VERSION"
+# log "CPUs                 : $CPUS"
+# log "Memory               : $MEMORY"
+# log "Disk                 : $DISK"
+
+
 
 section "creation des vms"
 
@@ -54,13 +61,6 @@ for NODE in "${VMS[@]}"; do
 done
 wait
 
-# section "Verifying virtual infra network"
-# for NODE in "${VMS[@]}"; do
-#   # verify_node_networking "$NODE" &
-# done
-# wait
-
-
 ####
 ## Kubernetes Bootstrap
 ####
@@ -71,7 +71,7 @@ sleep 1
 init_control_plane
 sleep 1
 
-export_kubeconfig_to_host
+# export_kubeconfig_to_host
 mkdir -p ~/.kube
 cp kubeconfig/test.conf ~/.kube/config
 chmod 600 ~/.kube/config

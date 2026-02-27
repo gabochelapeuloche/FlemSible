@@ -1,6 +1,7 @@
-: '
-  File creating the config file on host for kubectl to work
-'
+# Setting up iptables parameters on both conrtol-plane and worker nodes
+# This script will need to be executed directly on the host
+
+#!/usr/bin/env bash
 
 export_kubeconfig_to_host() {
   local CP_NODE="${CP_PREFIX}-1"

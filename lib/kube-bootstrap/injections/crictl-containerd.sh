@@ -1,4 +1,8 @@
+# Setting up crictl for containerd on both conrtol-plane and worker nodes
+# This script will need to be executed directly on the host
+
 #!/usr/bin/env bash
+
 set -Eeuo pipefail
 
 COMPONENT="crictl"

@@ -1,8 +1,8 @@
+# Setting up iptables parameters for them to see bridged traffic on both conrtol-plane and worker nodes
+# This script will need to be executed directly on the host
+
 #!/usr/bin/env bash
 
-: '
-  Managing iptables for kubernetes
-'
 set -Eeuo pipefail
 
 COMPONENT="iptables-bridge"

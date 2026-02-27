@@ -1,3 +1,6 @@
+# Performing calico installation on the control-plane node
+# This script will need to be executed directly on the host
+
 #!/usr/bin/env bash
 set -Eeuo pipefail
 

@@ -10,15 +10,6 @@ prepare_node() {
   local NODE="$1"
   
   log "Preparing node $NODE"
-  
-  for script in \
-    disable-swap \
-    ipv4-forward \
-    iptables
-  do
-    run_on_node "$NODE" "$SCRIPT_DIR/lib/virtual-infrastructure/$script.sh"
-    sleep 1
-  done
 
   log "Installing kubernetes components"
 
@@ -29,7 +20,7 @@ prepare_node() {
     kube \
     crictl-containerd
   do
-    run_on_node "$NODE" "$SCRIPT_DIR/lib/kube-bootstrap/install/$script.sh"
+    run_on_node "$NODE" "$SCRIPT_DIR/lib/kube-bootstrap/injections/$script.sh"
     sleep 2
   done
 }
@@ -42,7 +33,7 @@ init_control_plane() {
   log "Initializing control-plane on $NODE_NAME ($CP_IP)"
 
   run_on_node "$NODE_NAME" \
-    "$SCRIPT_DIR/lib/kube-bootstrap/install/init-cp.sh"
+    "$SCRIPT_DIR/lib/kube-bootstrap/injections/kubeadm-init.sh"
   
   sleep 2
 
@@ -75,5 +66,5 @@ install_calico_operator() {
 
   log "Installing Calico (Tigera Operator) on $CP_NODE"
   
-  run_on_node "$CP_NODE" "$SCRIPT_DIR/lib/kube-bootstrap/install/calico.sh"
+  run_on_node "$CP_NODE" "$SCRIPT_DIR/lib/kube-bootstrap/injections/calico.sh"
 }

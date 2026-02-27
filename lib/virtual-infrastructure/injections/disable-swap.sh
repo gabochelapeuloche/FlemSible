@@ -1,8 +1,8 @@
+# Disabling swap on both control-plane and worker nodes
+# This script will need to be executed directly on the host
+
 #!/usr/bin/env bash
 
-: '
-  Disabling swap for kubernetes
-'
 set -Eeuo pipefail
 
 COMPONENT="swapoff"
