@@ -1,0 +1,5 @@
+all-script.sh
+script.sh
+kubeconfig/test.conf
+kubeconfig
+tmp
