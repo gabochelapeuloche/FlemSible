@@ -23,10 +23,15 @@ So there's a recap :
 
 .
 ├── kubeconfig
+
 ├── lib
+
 │   ├── kube-bootstrap
+
 │   │   ├── injections
+
 │   │   │   ├── calico.sh
+
 │   │   │   ├── cni.sh
 │   │   │   ├── containerd.sh
 │   │   │   ├── crictl-containerd.sh
