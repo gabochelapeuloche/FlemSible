@@ -1,4 +1,4 @@
-# k8s-setup
+# FlemSibe - K8S Cluster Provider
 
 Tired of setting up k8s cluster in vms on my PC, not wanting to use terraform and ansible right now. This is a bash script that provides vms (leveraging multipass ubuntu) and performs cli actions on them to boot up a kubernetes cluster.
 
