@@ -2,11 +2,16 @@
 set -Eeuo pipefail
 
 COMPONENT="kubernetes"
-K8S_VERSION="1.29.6"
-K8S_MINOR="${K8S_VERSION%.*}"
-PKG_VERSION="${K8S_VERSION}-1.1"
+
+K8S_VERSION="JSONVALUE"
+URL="JSONVALUE"
+RELEASE_KEY="JSONVALUE"
+
 APT_KEYRING="/etc/apt/keyrings/kubernetes-apt-keyring.gpg"
 APT_SOURCE="/etc/apt/sources.list.d/kubernetes.list"
+
+K8S_MINOR="${K8S_VERSION%.*}"
+PKG_VERSION="${K8S_VERSION}-1.1"
 
 is_installed() {
   command -v kubeadm >/dev/null 2>&1 &&
@@ -23,12 +28,12 @@ install() {
 
   sudo mkdir -p /etc/apt/keyrings
   if [[ ! -f "$APT_KEYRING" ]]; then
-    curl -fsSL "https://pkgs.k8s.io/core:/stable:/v${K8S_MINOR}/deb/Release.key" \
+    curl -fsSL "$RELEASE_KEY" \
       | sudo gpg --dearmor -o "$APT_KEYRING"
   fi
 
   if [[ ! -f "$APT_SOURCE" ]]; then
-    echo "deb [signed-by=$APT_KEYRING] https://pkgs.k8s.io/core:/stable:/v${K8S_MINOR}/deb/ /" \
+    echo "deb [signed-by=$APT_KEYRING] $URL /" \
       | sudo tee "$APT_SOURCE" >/dev/null
   fi
 

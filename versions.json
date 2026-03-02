@@ -77,13 +77,15 @@
       "minor": "1.35",
       "patch": "1.35.0",
       "pkg_version": "1.35.0-1.1",
-      "repo_url": "http://pkgs.k8s.io/core:/stable:/v1.35/deb/"
+      "repo_url": "http://pkgs.k8s.io/core:/stable:/v1.35/deb/",
+      "release-key": "http://pkgs.k8s.io/core:/stable:/v1.35/deb/Release.key"
     },
     "components": {
       "container-runtime": {
         "containerd" : {
           "version": "2.2.1",
-          "url": "https://github.com/containerd/containerd/releases/download/v2.2.1/containerd-2.2.1-linux-amd64.tar.gz"
+          "url": "https://github.com/containerd/containerd/releases/download/v2.2.1/containerd-2.2.1-linux-amd64.tar.gz",
+          "service-url": "https://raw.githubusercontent.com/containerd/containerd/main/containerd.service"
         }
       },
       "runc": {
@@ -101,11 +103,17 @@
             "179/tcp",
             "5473/tcp"
           ],
-          "tigera-operator": "kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/tigera-operator.yaml",
+          "tigera-operator": "https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/tigera-operator.yaml",
           "crd-url": "https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/custom-resources.yaml"
         }
 
       }
+    },
+    "tools": {
+      "prometheus": false,
+      "istio": false,
+      "argocd": false,
+      "envoy": false
     }
   }
 }

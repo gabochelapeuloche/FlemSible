@@ -5,19 +5,21 @@
 set -Eeuo pipefail
 
 COMPONENT="cni-plugins"
-VERSION="1.5.0"
-URL=""
-FILE=""
 BIN_DIR="/opt/cni/bin"
+
+VERSION="JSONVALUE"
+URL="JSONVALUE"
+
+FILE="$(basename "$URL")"
 
 is_installed() {
   [[ -x "$BIN_DIR/bridge" ]]
 }
 
 install() {
-  curl -fsSLO "https://github.com/containernetworking/plugins/releases/download/v${VERSION}/cni-plugins-linux-amd64-v${VERSION}.tgz"
+  curl -fsSLO "$URL"
   sudo mkdir -p "$BIN_DIR"
-  sudo tar -C "$BIN_DIR" -xzf "cni-plugins-linux-amd64-v${VERSION}.tgz"
+  sudo tar -C "$BIN_DIR" -xzf "$FILE"
 }
 
 main() {

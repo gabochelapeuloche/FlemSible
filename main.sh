@@ -18,6 +18,7 @@ source "$SCRIPT_DIR/lib/virtual-infrastructure/injections/network-rules.sh"
 source "$SCRIPT_DIR/lib/virtual-infrastructure/vm-provisionning.sh"
 
 source "$SCRIPT_DIR/lib/kube-bootstrap/node-bootstrap.sh"
+source "$SCRIPT_DIR/lib/kube-bootstrap/injections/host-config.sh"
 # source "$SCRIPT_DIR/lib/kube-bootstrap/injections/host-config.sh"
 
 require_cmd multipass
@@ -72,9 +73,12 @@ init_control_plane
 sleep 1
 
 # export_kubeconfig_to_host
-mkdir -p ~/.kube
-cp kubeconfig/test.conf ~/.kube/config
-chmod 600 ~/.kube/config
+
+# mkdir -p ~/.kube
+# cp kubeconfig/test.conf ~/.kube/config
+# chmod 600 ~/.kube/config
+export_kubeconfig_to_host
+sleep 1
 kubectl get nodes
 sleep 1
 

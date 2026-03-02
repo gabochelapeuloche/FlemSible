@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-POD_CIDR="$CP_POD_CIDR"
+POD_CIDR="JSONVALUE"
+
 export KUBECONFIG=/etc/kubernetes/admin.conf
 export PAGER=cat
 export KUBECTL_PAGER=cat

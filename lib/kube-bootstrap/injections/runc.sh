@@ -4,9 +4,10 @@
 set -Eeuo pipefail
 
 COMPONENT="runc"
-VERSION="1.1.12"
+
+VERSION="JSONVALUE"
+DOWNLOAD_URL="JSONVALUE"
 BIN_PATH="/usr/local/sbin/runc"
-DOWNLOAD_URL="https://github.com/opencontainers/runc/releases/download/v${VERSION}/runc.amd64"
 
 is_installed() {
   [[ -x "$BIN_PATH" ]]

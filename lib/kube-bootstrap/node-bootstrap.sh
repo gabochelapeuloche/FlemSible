@@ -10,19 +10,37 @@ prepare_node() {
   local NODE="$1"
   
   log "Preparing node $NODE"
-
   log "Installing kubernetes components"
+  
+  # Executing containerd script on node
+  run_on_node "$NODE" \
+    "$SCRIPT_DIR/lib/kube-bootstrap/injections/containerd.sh" \
+    "VERSION=$CONTAINERD_VERSION CHECK_SUM_URL=$CONTAINERD_URL CONTAINERD_SERVICE_URL=$CONTAINERD_SERVICE_URL"
+  sleep 2
 
-  for script in \
-    containerd \
-    runc \
-    cni \
-    kube \
-    crictl-containerd
-  do
-    run_on_node "$NODE" "$SCRIPT_DIR/lib/kube-bootstrap/injections/$script.sh"
-    sleep 2
-  done
+  # Executing runc script on node
+  run_on_node "$NODE" \
+    "$SCRIPT_DIR/lib/kube-bootstrap/injections/runc.sh" \
+    "VERSION=$RUNC_VERSION DOWNLOAD_URL=$RUNC_URL"
+  sleep 2
+
+  # Executing cni script on node
+  run_on_node "$NODE" \
+    "$SCRIPT_DIR/lib/kube-bootstrap/injections/cni.sh" \
+    "VERSION=$CNI_VERSION URL=$CNI_URL"
+  sleep 2
+
+  # Executing kube script on node
+  run_on_node "$NODE" \
+    "$SCRIPT_DIR/lib/kube-bootstrap/injections/kube.sh" \
+    "K8S_VERSION=$K8S_PATCH URL=$K8S_REPO RELEASE_KEY=$K8S_RELEASE_KEY"
+  sleep 2
+
+  # Executing crictl-containerd script on node
+  run_on_node "$NODE" \
+    "$SCRIPT_DIR/lib/kube-bootstrap/injections/crictl-containerd.sh" \
+    ""
+  sleep 2
 }
 
 init_control_plane() {
@@ -33,7 +51,8 @@ init_control_plane() {
   log "Initializing control-plane on $NODE_NAME ($CP_IP)"
 
   run_on_node "$NODE_NAME" \
-    "$SCRIPT_DIR/lib/kube-bootstrap/injections/kubeadm-init.sh"
+    "$SCRIPT_DIR/lib/kube-bootstrap/injections/kubeadm-init.sh" \
+    "POD_CIDR=$CP_POD_CIDR"
   
   sleep 2
 
@@ -65,8 +84,9 @@ install_calico_operator() {
   local CP_NODE="${CP_PREFIX}-1"
 
   log "Installing Calico (Tigera Operator) on $CP_NODE"
-  # On passe explicitement les paires CLE=VALEUR
 
-  run_on_node "$NODE" "$SCRIPT_DIR/lib/kube-bootstrap/injections/cni.sh" "VERSION=$CNI_VERSION URL=$CNI_URL"
-  # run_on_node "$CP_NODE" "$SCRIPT_DIR/lib/kube-bootstrap/injections/calico.sh"
+  # Exécution
+  run_on_node "$CP_NODE" \
+    "$SCRIPT_DIR/lib/kube-bootstrap/injections/calico.sh" \
+    "CALICO_VERSION=$CALICO_VERSION OPERATOR_URL=$CALICO_TIGERA_OPERATOR CUSTOM_RESOURCES_URL=$CALICO_CRD_URL"
 }

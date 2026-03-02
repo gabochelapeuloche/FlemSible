@@ -5,7 +5,9 @@
 set -Eeuo pipefail
 
 COMPONENT="containerd"
-VERSION="1.7.14"
+VERSION="JSONVALUE"
+CHECK_SUM_URL="JSONVALUE"
+CONTAINERD_SERVICE_URL="JSONVALUE"
 
 is_installed() {
   command -v containerd >/dev/null 2>&1
@@ -13,11 +15,11 @@ is_installed() {
 
 install() {
   # donwload containerd archive and verify sha256sum
-  curl -fsSLO "https://github.com/containerd/containerd/releases/download/v${VERSION}/containerd-${VERSION}-linux-amd64.tar.gz"
+  curl -fsSLO "$CHECK_SUM_URL"
   sudo tar -C /usr/local -xzf "containerd-${VERSION}-linux-amd64.tar.gz"
   
   # Install systemd to start containerd
-  curl -fsSLO https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+  curl -fsSLO "$CONTAINERD_SERVICE_URL"
   sudo mkdir -p /usr/local/lib/systemd/system
   sudo mv containerd.service /usr/local/lib/systemd/system/
 

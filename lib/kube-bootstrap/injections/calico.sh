@@ -5,10 +5,12 @@
 set -Eeuo pipefail
 
 COMPONENT="calico"
-CALICO_VERSION="3.28.0"
-OPERATOR_URL="https://raw.githubusercontent.com/projectcalico/calico/v${CALICO_VERSION}/manifests/tigera-operator.yaml"
-CUSTOM_RESOURCES_URL="https://raw.githubusercontent.com/projectcalico/calico/v${CALICO_VERSION}/manifests/custom-resources.yaml"
 CALICO_NS="calico-system"
+
+# Arguments to feed before injecting script into the nodes
+CALICO_VERSION="JSONVALUE"
+OPERATOR_URL="JSONVALUE"
+CUSTOM_RESOURCES_URL="JSONVALUE"
 
 is_installed() {
   kubectl get ns "$CALICO_NS" >/dev/null 2>&1

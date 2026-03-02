@@ -180,63 +180,65 @@ load_versions() {
 }
 
 get_version_info() {
-    local VERSION=$1
-    local JSON_FILE="$SCRIPT_DIR/versions.json"
+  local VERSION=$1
+  local JSON_FILE="$SCRIPT_DIR/versions.json"
 
-    if [[ ! -f "$JSON_FILE" ]]; then
-        die "Fichier versions.json introuvable."
-    fi
+  if [[ ! -f "$JSON_FILE" ]]; then
+      die "Fichier versions.json introuvable."
+  fi
 
-    # Informations about virtual layer
-    # Control-plane
-    local JSON_PATH=".\"$VERSION\".\"virtual-layer\".\"control-plane\""
-    CP_PREFIX=$(jq -r "$JSON_PATH.name" "$JSON_FILE")
-    CP_NUMBER=$(jq -r "$JSON_PATH.count" "$JSON_FILE")
-    CP_OPEN_PORTS=$(jq -r "$JSON_PATH.ports // []" "$JSON_FILE")
-    CP_OS_VERSION=$(jq -r "$JSON_PATH.\"os-version\"" "$JSON_FILE")
-    CP_CPUS=$(jq -r "$JSON_PATH.cpus" "$JSON_FILE")
-    CP_MEMORY=$(jq -r "$JSON_PATH.memory" "$JSON_FILE")
-    CP_DISK=$(jq -r "$JSON_PATH.disk" "$JSON_FILE")
-    CP_POD_CIDR=$(jq -r "$JSON_PATH.cidr" "$JSON_FILE")
+  # Informations about virtual layer
+  # Control-plane
+  local JSON_PATH=".\"$VERSION\".\"virtual-layer\".\"control-plane\""
+  CP_PREFIX=$(jq -r "$JSON_PATH.name" "$JSON_FILE")
+  CP_NUMBER=$(jq -r "$JSON_PATH.count" "$JSON_FILE")
+  CP_OPEN_PORTS=$(jq -r "$JSON_PATH.ports // []" "$JSON_FILE")
+  CP_OS_VERSION=$(jq -r "$JSON_PATH.\"os-version\"" "$JSON_FILE")
+  CP_CPUS=$(jq -r "$JSON_PATH.cpus" "$JSON_FILE")
+  CP_MEMORY=$(jq -r "$JSON_PATH.memory" "$JSON_FILE")
+  CP_DISK=$(jq -r "$JSON_PATH.disk" "$JSON_FILE")
+  CP_POD_CIDR=$(jq -r "$JSON_PATH.cidr" "$JSON_FILE")
 
-    # Worker
-    local JSON_PATH=".\"$VERSION\".\"virtual-layer\".worker"
-    W_PREFIX=$(jq -r "$JSON_PATH.name" "$JSON_FILE")
-    W_NUMBER=$(jq -r "$JSON_PATH.count" "$JSON_FILE")
-    W_OPEN_PORTS=$(jq -r "$JSON_PATH.ports // []" "$JSON_FILE")
-    W_OS_VERSION=$(jq -r "$JSON_PATH.\"os-version\"" "$JSON_FILE")
-    W_CPUS=$(jq -r "$JSON_PATH.cpus" "$JSON_FILE")
-    W_MEMORY=$(jq -r "$JSON_PATH.memory" "$JSON_FILE")
-    W_DISK=$(jq -r "$JSON_PATH.disk" "$JSON_FILE")
+  # Worker
+  local JSON_PATH=".\"$VERSION\".\"virtual-layer\".worker"
+  W_PREFIX=$(jq -r "$JSON_PATH.name" "$JSON_FILE")
+  W_NUMBER=$(jq -r "$JSON_PATH.count" "$JSON_FILE")
+  W_OPEN_PORTS=$(jq -r "$JSON_PATH.ports // []" "$JSON_FILE")
+  W_OS_VERSION=$(jq -r "$JSON_PATH.\"os-version\"" "$JSON_FILE")
+  W_CPUS=$(jq -r "$JSON_PATH.cpus" "$JSON_FILE")
+  W_MEMORY=$(jq -r "$JSON_PATH.memory" "$JSON_FILE")
+  W_DISK=$(jq -r "$JSON_PATH.disk" "$JSON_FILE")
 
-    # Extraction des infos Kubernetes
-    local JSON_PATH=".\"$VERSION\".kubernetes"
-    K8S_MINOR=$(jq -r "$JSON_PATH.minor" "$JSON_FILE")
-    K8S_PATCH=$(jq -r "$JSON_PATH.patch" "$JSON_FILE")
-    K8S_PKG_VERSION=$(jq -r "$JSON_PATH.pkg_version" "$JSON_FILE")
-    K8S_REPO=$(jq -r "$JSON_PATH.repo_url" "$JSON_FILE")
+  # Extraction des infos Kubernetes
+  local JSON_PATH=".\"$VERSION\".kubernetes"
+  K8S_MINOR=$(jq -r "$JSON_PATH.minor" "$JSON_FILE")
+  K8S_PATCH=$(jq -r "$JSON_PATH.patch" "$JSON_FILE")
+  K8S_PKG_VERSION=$(jq -r "$JSON_PATH.pkg_version" "$JSON_FILE")
+  K8S_REPO=$(jq -r "$JSON_PATH.repo_url" "$JSON_FILE")
+  K8S_RELEASE_KEY=$(jq -r "$JSON_PATH.\"release-key\"" "$JSON_FILE")
 
-    # Extraction des composants
-    # container-runtime
-    local JSON_PATH=".\"$VERSION\".components.\"container-runtime\".containerd"
-    CONTAINERD_VERSION=$(jq -r "$JSON_PATH.version" "$JSON_FILE")
-    CONTAINERD_URL=$(jq -r "$JSON_PATH.url" "$JSON_FILE")
-    
-    # runc
-    local JSON_PATH=".\"$VERSION\".components.runc"
-    RUNC_VERSION=$(jq -r "$JSON_PATH.version" "$JSON_FILE")
-    RUNC_URL=$(jq -r "$JSON_PATH.url" "$JSON_FILE")
+  # Extraction des composants
+  # container-runtime
+  local JSON_PATH=".\"$VERSION\".components.\"container-runtime\".containerd"
+  CONTAINERD_VERSION=$(jq -r "$JSON_PATH.version" "$JSON_FILE")
+  CONTAINERD_URL=$(jq -r "$JSON_PATH.url" "$JSON_FILE")
+  CONTAINERD_SERVICE_URL=$(jq -r "$JSON_PATH.\"service-url\"" "$JSON_FILE")
+  
+  # runc
+  local JSON_PATH=".\"$VERSION\".components.runc"
+  RUNC_VERSION=$(jq -r "$JSON_PATH.version" "$JSON_FILE")
+  RUNC_URL=$(jq -r "$JSON_PATH.url" "$JSON_FILE")
 
-    # cni-plugin
-    local JSON_PATH=".\"$VERSION\".components.\"cni-plugin\""
-    CNI_VERSION=$(jq -r "$JSON_PATH.version" "$JSON_FILE")
-    CNI_URL=$(jq -r "$JSON_PATH.url" "$JSON_FILE")
-    
-    # network-plugin
-    local JSON_PATH=".\"$VERSION\".components.\"network-plugins\".calico"
-    CNI="calico"
-    CALICO_VERSION=$(jq -c "$JSON_PATH.version" "$JSON_FILE")
-    CALICO_CRD_URL=$(jq -c "$JSON_PATH.\"tigera-operator\"" "$JSON_FILE")
-    CALICO_TIGERA_OPERATOR=$(jq -c "$JSON_PATH.\"crd-url\"" "$JSON_FILE")
-    CALICO_OPEN_PORTS=$(jq -c "$JSON_PATH.ports // []" "$JSON_FILE")
+  # cni-plugin
+  local JSON_PATH=".\"$VERSION\".components.\"cni-plugin\""
+  CNI_VERSION=$(jq -r "$JSON_PATH.version" "$JSON_FILE")
+  CNI_URL=$(jq -r "$JSON_PATH.url" "$JSON_FILE")
+  
+  # network-plugin
+  local JSON_PATH=".\"$VERSION\".components.\"network-plugins\".calico"
+  CNI="calico"
+  CALICO_VERSION=$(jq -c "$JSON_PATH.version" "$JSON_FILE")
+  CALICO_CRD_URL=$(jq -c "$JSON_PATH.\"crd-url\"" "$JSON_FILE")
+  CALICO_TIGERA_OPERATOR=$(jq -c "$JSON_PATH.\"tigera-operator\"" "$JSON_FILE")
+  CALICO_OPEN_PORTS=$(jq -c "$JSON_PATH.ports // []" "$JSON_FILE")
 }
