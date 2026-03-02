@@ -54,7 +54,8 @@
         "os-version":"noble",
         "cpus": 2,
         "memory": "2G",
-        "disk": "15G"
+        "disk": "15G",
+        "cidr": "192.168.0.0/16"
       },
       "worker": {
         "name": "worker",

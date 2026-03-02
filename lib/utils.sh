@@ -197,6 +197,7 @@ get_version_info() {
     CP_CPUS=$(jq -r "$JSON_PATH.cpus" "$JSON_FILE")
     CP_MEMORY=$(jq -r "$JSON_PATH.memory" "$JSON_FILE")
     CP_DISK=$(jq -r "$JSON_PATH.disk" "$JSON_FILE")
+    CP_POD_CIDR=$(jq -r "$JSON_PATH.cidr" "$JSON_FILE")
 
     # Worker
     local JSON_PATH=".\"$VERSION\".\"virtual-layer\".worker"

@@ -65,6 +65,8 @@ install_calico_operator() {
   local CP_NODE="${CP_PREFIX}-1"
 
   log "Installing Calico (Tigera Operator) on $CP_NODE"
-  
-  run_on_node "$CP_NODE" "$SCRIPT_DIR/lib/kube-bootstrap/injections/calico.sh"
+  # On passe explicitement les paires CLE=VALEUR
+
+  run_on_node "$NODE" "$SCRIPT_DIR/lib/kube-bootstrap/injections/cni.sh" "VERSION=$CNI_VERSION URL=$CNI_URL"
+  # run_on_node "$CP_NODE" "$SCRIPT_DIR/lib/kube-bootstrap/injections/calico.sh"
 }
