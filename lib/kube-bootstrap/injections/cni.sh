@@ -7,9 +7,9 @@ set -Eeuo pipefail
 COMPONENT="cni-plugins"
 BIN_DIR="/opt/cni/bin"
 
+# Arguments to feed before injecting script into the nodes
 VERSION="JSONVALUE"
 URL="JSONVALUE"
-
 FILE="$(basename "$URL")"
 
 is_installed() {

@@ -5,9 +5,11 @@
 set -Eeuo pipefail
 
 COMPONENT="containerd"
+
+# Arguments to feed before injecting script into the nodes
 VERSION="JSONVALUE"
 CHECK_SUM_URL="JSONVALUE"
-CONTAINERD_SERVICE_URL="JSONVALUE"
+SERVICE_URL="JSONVALUE"
 
 is_installed() {
   command -v containerd >/dev/null 2>&1
@@ -19,7 +21,7 @@ install() {
   sudo tar -C /usr/local -xzf "containerd-${VERSION}-linux-amd64.tar.gz"
   
   # Install systemd to start containerd
-  curl -fsSLO "$CONTAINERD_SERVICE_URL"
+  curl -fsSLO "$SERVICE_URL"
   sudo mkdir -p /usr/local/lib/systemd/system
   sudo mv containerd.service /usr/local/lib/systemd/system/
 

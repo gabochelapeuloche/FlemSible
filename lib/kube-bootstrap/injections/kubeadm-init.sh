@@ -1,6 +1,9 @@
+# Script running only on control plane for booting up the node
+
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Arguments to feed before injecting script into the nodes
 POD_CIDR="JSONVALUE"
 
 export KUBECONFIG=/etc/kubernetes/admin.conf

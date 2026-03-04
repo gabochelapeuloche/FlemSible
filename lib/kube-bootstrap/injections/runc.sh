@@ -5,8 +5,9 @@ set -Eeuo pipefail
 
 COMPONENT="runc"
 
+# Arguments to feed before injecting script into the nodes
 VERSION="JSONVALUE"
-DOWNLOAD_URL="JSONVALUE"
+URL="JSONVALUE"
 BIN_PATH="/usr/local/sbin/runc"
 
 is_installed() {
@@ -16,7 +17,7 @@ is_installed() {
 install() {
   echo "[$COMPONENT] installing version $VERSION"
 
-  curl -fsSLO "$DOWNLOAD_URL"
+  curl -fsSLO "$URL"
   sudo install -m 755 runc.amd64 "$BIN_PATH"
 }
 

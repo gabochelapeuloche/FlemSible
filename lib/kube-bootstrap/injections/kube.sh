@@ -2,26 +2,24 @@
 set -Eeuo pipefail
 
 COMPONENT="kubernetes"
-
-K8S_VERSION="JSONVALUE"
-URL="JSONVALUE"
-RELEASE_KEY="JSONVALUE"
-
 APT_KEYRING="/etc/apt/keyrings/kubernetes-apt-keyring.gpg"
 APT_SOURCE="/etc/apt/sources.list.d/kubernetes.list"
 
-K8S_MINOR="${K8S_VERSION%.*}"
-PKG_VERSION="${K8S_VERSION}-1.1"
+# Arguments to feed before injecting script into the nodes
+VERSION="JSONVALUE"
+URL="JSONVALUE"
+RELEASE_KEY="JSONVALUE"
+PACKAGE="${VERSION}-1.1"
 
 is_installed() {
   command -v kubeadm >/dev/null 2>&1 &&
   command -v kubelet >/dev/null 2>&1 &&
   command -v kubectl >/dev/null 2>&1 &&
-  kubeadm version -o short | grep -q "v${K8S_VERSION}"
+  kubeadm version -o short | grep -q "v${VERSION}"
 }
 
 install() {
-  echo "[$COMPONENT] installing Kubernetes $K8S_VERSION"
+  echo "[$COMPONENT] installing Kubernetes $VERSION"
 
   sudo apt-get update
   sudo apt-get install -y apt-transport-https ca-certificates curl gpg
@@ -39,9 +37,9 @@ install() {
 
   sudo apt-get update
   sudo apt-get install -y \
-    kubelet="$PKG_VERSION" \
-    kubeadm="$PKG_VERSION" \
-    kubectl="$PKG_VERSION" \
+    kubelet="$PACKAGE" \
+    kubeadm="$PACKAGE" \
+    kubectl="$PACKAGE" \
     --allow-downgrades --allow-change-held-packages
 
   sudo apt-mark hold kubelet kubeadm kubectl

@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 
-: '
-  This file contains script for preparing the virtual machines to receive a node (master
-  or control-plane)
-'
+# This file contains functions to call from host and run scripts on passed as argument nodes 
+# Those functions prepare the virtual machines to receive a node (master or control-plane)
 
 prepare_node() {
   # Function that runs on every node to do the common setup
@@ -15,13 +13,13 @@ prepare_node() {
   # Executing containerd script on node
   run_on_node "$NODE" \
     "$SCRIPT_DIR/lib/kube-bootstrap/injections/containerd.sh" \
-    "VERSION=$CONTAINERD_VERSION CHECK_SUM_URL=$CONTAINERD_URL CONTAINERD_SERVICE_URL=$CONTAINERD_SERVICE_URL"
+    "VERSION=$CONTAINERD_VERSION CHECK_SUM_URL=$CONTAINERD_URL SERVICE_URL=$CONTAINERD_SERVICE_URL"
   sleep 2
 
   # Executing runc script on node
   run_on_node "$NODE" \
     "$SCRIPT_DIR/lib/kube-bootstrap/injections/runc.sh" \
-    "VERSION=$RUNC_VERSION DOWNLOAD_URL=$RUNC_URL"
+    "VERSION=$RUNC_VERSION URL=$RUNC_URL"
   sleep 2
 
   # Executing cni script on node
@@ -33,7 +31,7 @@ prepare_node() {
   # Executing kube script on node
   run_on_node "$NODE" \
     "$SCRIPT_DIR/lib/kube-bootstrap/injections/kube.sh" \
-    "K8S_VERSION=$K8S_PATCH URL=$K8S_REPO RELEASE_KEY=$K8S_RELEASE_KEY"
+    "VERSION=$K8S_PATCH URL=$K8S_REPO RELEASE_KEY=$K8S_RELEASE_KEY"
   sleep 2
 
   # Executing crictl-containerd script on node
@@ -53,7 +51,6 @@ init_control_plane() {
   run_on_node "$NODE_NAME" \
     "$SCRIPT_DIR/lib/kube-bootstrap/injections/kubeadm-init.sh" \
     "POD_CIDR=$CP_POD_CIDR"
-  
   sleep 2
 
   # VM User 
