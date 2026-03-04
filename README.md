@@ -28,6 +28,7 @@ How does it do ?
 
 .
 ├── kubeconfig
+│   └── k8s-cluster.conf
 ├── lib
 │   ├── kube-bootstrap
 │   │   ├── injections
@@ -50,34 +51,18 @@ How does it do ?
 │       │   └── network-rules.sh
 │       └── vm-provisionning.sh
 ├── logs
-│   ├── kube-bootstrap
-│   ├── run
-│   ├── run_20260304_160306
-│   ├── run_20260304_160402
-│   │   ├── control-plane-1.log
-│   │   ├── worker-1.log
-│   │   └── worker-2.log
-│   ├── run_20260304_161438
-│   │   ├── control-plane-1.log
-│   │   ├── worker-1.log
-│   │   └── worker-2.log
-│   ├── run_20260304_162138
-│   │   ├── control-plane-1.log
-│   │   ├── worker-1.log
-│   │   └── worker-2.log
-│   └── virtual-infrastructure
 ├── main.sh
 ├── README.md
 ├── tests
 │   ├── kube-bootstrap
 │   ├── script-config
 │   └── virtual-infrastructure
-├── tmp
-│   └── k8s-deploy-1000
 └── versions.json
 
-22 directories, 27 files
+13 directories, 19 files
 
 ## command to run the script
+
+You'll probably need to run chmod +x to give execution right to main.sh. Then just run ./main "version" and it's done. If the script is not broken you'll have a k8s running cluster with cni plugin.
 
 ## Options

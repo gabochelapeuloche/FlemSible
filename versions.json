@@ -65,7 +65,10 @@
           "version":"v3.28.0",
           "ports": [
             "179/tcp",
-            "5473/tcp"
+            "5473/tcp",
+            "4789/udp",
+            "51820/udp",
+            "51821/udp"
           ],
           "tigera-operator": "https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/tigera-operator.yaml",
           "crd-url": "https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/custom-resources.yaml"
