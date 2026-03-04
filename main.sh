@@ -1,90 +1,52 @@
+# Main file of the script orchestrating the setup of a virtual kubernetes cluster on
+# ubuntu machines using multipass
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-: '
-  Main file of the script orchestrating the setup of a virtual kubernetes cluster on
-  ubuntu machines using multipass
-'
-
-####
-## Requirements en script variables
-####
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Nettoyage automatique en cas d'erreur
+trap 'echo "An error occurred. Check logs."; exit 1' ERR
 
 source "$SCRIPT_DIR/lib/utils.sh"
-
 source "$SCRIPT_DIR/lib/virtual-infrastructure/injections/network-rules.sh"
 source "$SCRIPT_DIR/lib/virtual-infrastructure/vm-provisionning.sh"
-
 source "$SCRIPT_DIR/lib/kube-bootstrap/node-bootstrap.sh"
 source "$SCRIPT_DIR/lib/kube-bootstrap/injections/host-config.sh"
-# source "$SCRIPT_DIR/lib/kube-bootstrap/injections/host-config.sh"
-
 require_cmd multipass
 
-####
-## Multipass VMS setup
-####
-
-log "\nusers customization\n"
-
-section "user custom"
-
+# 1. Setup
+section "Setting up"
 user_inputs "$@"
-
-# Initialisation des variables à partir du JSON
-get_version_info "$K8S_VERSION"
-
+get_version_info "${K8S_VERSION:-1.35}"
 validate_config
 
+# Virtual layer creation
+section "Creation des vms"
+create_vms && sleep 1
 
-
-section "Cluster configuration"
-# log "Control-plane number : $CP_NUMBER"
-# log "Workers number       : $W_NUMBER"
-# log "CP prefix            : $CP_PREFIX"
-# log "Worker prefix        : $W_PREFIX"
-# log "OS version           : $OS_VERSION"
-# log "CPUs                 : $CPUS"
-# log "Memory               : $MEMORY"
-# log "Disk                 : $DISK"
-
-
-
-section "creation des vms"
-
-create_vms
-
-section "Preparing nodes"
+# 3. Provisioning (Parallèle sur tous les nœuds)
+section "🛠 Preparing nodes"
 for NODE in "${VMS[@]}"; do
   prepare_node "$NODE" &
 done
 wait
-
-####
-## Kubernetes Bootstrap
-####
-
-section "Kubernetes bootstrap"
 sleep 1
 
+# 4. K8s Orchestration (Séquentiel car logique métier)
+section "☸️  Initializing Cluster"
 init_control_plane
-sleep 1
-
-# export_kubeconfig_to_host
-
-# mkdir -p ~/.kube
-# cp kubeconfig/test.conf ~/.kube/config
-# chmod 600 ~/.kube/config
 export_kubeconfig_to_host
-sleep 1
-kubectl get nodes
-sleep 1
 
-join_workers
-sleep 1
+# Joining workers
+section "🤝 Joining Workers"
+join_workers && sleep 1
 
+# Calico bootstraping
+section "🌐 Installing Network Plugin"
 install_calico_operator
-kubectl get nodes -o wide
+
+# 5. Final Check
+until kubectl get nodes | grep -q "Ready"; do
+    echo -n "." && sleep 2
+done
 section "Cluster ready 🎉"

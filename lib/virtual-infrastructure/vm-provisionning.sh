@@ -17,8 +17,9 @@ create_vms() {
       --cpus "$CP_CPUS" \
       --memory "$CP_MEMORY" \
       --disk "$CP_DISK"
-    sleep 2
+    sleep 2 &
   done
+  wait
 
   for ((i=1; i<=W_NUMBER; i++)); do
     VMS+=("$W_PREFIX-$i")
