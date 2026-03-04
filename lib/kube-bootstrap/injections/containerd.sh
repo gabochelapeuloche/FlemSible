@@ -1,15 +1,15 @@
+#!/usr/bin/env bash
 # Setting up containerd on both conrtol-plane and worker nodes
 # This script will need to be executed directly on the host
-
-#!/usr/bin/env bash
 set -Eeuo pipefail
 
-COMPONENT="containerd"
-
 # Arguments to feed before injecting script into the nodes
-VERSION="JSONVALUE"
-CHECK_SUM_URL="JSONVALUE"
-SERVICE_URL="JSONVALUE"
+VERSION="${VERSION:-}"
+CHECK_SUM_URL="${CHECK_SUM_URL:-}"
+SERVICE_URL="${SERVICE_URL:-}"
+
+# Hard coded args
+COMPONENT="containerd"
 
 is_installed() {
   command -v containerd >/dev/null 2>&1
@@ -30,7 +30,7 @@ install() {
   containerd config default | sudo tee /etc/containerd/config.toml >/dev/null
   sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
 
-  # Reload le service
+  # Reload service
   sudo systemctl daemon-reexec
   sudo systemctl enable --now containerd
 }

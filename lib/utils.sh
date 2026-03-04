@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
+# Utilities for logging, error handling and CLI parsing
 
-: '
-Utilities for logging, error handling and CLI parsing
-'
-
-log() {
-  # logging for verbose option
-  [[ "${VERBOSE:-false}" == true ]] || return 0
+print_cue() {
+  # printing informations for verbose option (reserved for script state and UI not logging)
+  # [[ "${VERBOSE:-false}" == true ]] || return 0
   printf "%b\n" "$*"
 }
 
 section() {
   # Visual section for user when verbose option is used
-  log ""
-  log "=== $* ==="
+  print_cue ""
+  print_cue "=== $* ==="
 }
 
 die() {
@@ -103,7 +100,7 @@ user_inputs() {
         shift 2
         ;;
       --verbose)
-        VERBOSE_USER=true
+        VERBOSE_USER="$2"
         shift
         ;;
       *)
@@ -113,65 +110,51 @@ user_inputs() {
   done
 }
 
-remote_exec() {
-  # executiong a script directly on a vm through multipass exec
+run_on_node_env() {
   local NODE="$1"
-  local SCRIPT="$2"
+  local SRC="$2"
+  local VARS="${3:-}"
+  local NAME=$(basename "$SRC")
+  local LOG_FILE="$LOG_SESSION_DIR/${NODE}.log"
 
-  multipass exec "$NODE" -- bash -c "
-    set -Eeuo pipefail
-    $SCRIPT
-  "
+  printf "  %-15s | %-20s | " "$NODE" "$NAME"
+
+  # Transfert
+  multipass transfer "$SRC" "$NODE:/tmp/$NAME"
+  multipass exec "$NODE" -- chmod +x "/tmp/$NAME"
+
+  # Correction ici : Ajout de </dev/null et s'assurer que VARS ne casse pas la ligne
+  # On utilise 'env' pour injecter proprement les variables
+  # multipass exec "$NODE" -- sudo env $VARS bash "/tmp/$NAME"
+  
+  if multipass exec "$NODE" -- bash -c "sudo env $VARS bash /tmp/$NAME" </dev/null 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
+    echo -e "\e[32m[OK]\e[0m"
+  else
+    echo -e "\e[31m[FAILED]\e[0m"
+    echo "    ↳ Check logs: $LOG_FILE"
+    return 1
+  fi
 }
 
 run_on_node() {
   local NODE="$1"
   local SRC="$2"
-  local MAPPINGS="${3:-}"
-  
   local NAME=$(basename "$SRC")
-  # Création d'un sous-dossier de travail pour plus de propreté
-  local WORK_DIR="$SCRIPT_DIR/tmp/k8s-deploy-$(id -u)"
-  mkdir -p "$WORK_DIR"
-  
-  local TMP="$WORK_DIR/${NODE}_${NAME}"
-  
-  # 1. Préparation
-  cp "$SRC" "$TMP"
+  local LOG_FILE="$LOG_SESSION_DIR/${NODE}.log"
 
-  # 2. Injection
-  if [[ -n "$MAPPINGS" ]]; then
-    for map in $MAPPINGS; do
-      local key="${map%%=*}"
-      local value="${map##*=}"
-      sed -i "s|$key=\"JSONVALUE\"|$key=\"$value\"|g" "$TMP"
-    done
-  fi
+  printf "  %-15s | %-20s | " "$NODE" "$NAME"
 
-  # 3. Transfert avec vérification
-  if [[ -f "$TMP" ]]; then
-    # On laisse un micro-délai pour éviter les collisions I/O
-    sleep 0.2
-    multipass exec "$NODE" -- mkdir -p "/tmp/"
-    multipass transfer "$TMP" "$NODE:/tmp/$NAME"
-    multipass exec "$NODE" -- sudo chmod +x "/tmp/$NAME"
-    multipass exec "$NODE" -- sudo bash "/tmp/$NAME"
-    
-    # 4. Nettoyage DIFFÉRÉ
-    # On ne supprime le fichier local QUE quand on est sûr 
-    # que l'exécution distante est lancée ou terminée.
-    # rm -f "$TMP"
-    # multipass exec "$NODE" -- rm -f "/tmp/$NAME"
+  # Transfert
+  multipass transfer "$SRC" "$NODE:/tmp/$NAME"
+  multipass exec "$NODE" -- chmod +x "/tmp/$NAME"
+
+  if multipass exec "$NODE" -- sudo bash "/tmp/$NAME" </dev/null 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
+    echo -e "\e[32m[OK]\e[0m"
   else
-    echo "❌ Erreur : Fichier source $TMP manquant"
+    echo -e "\e[31m[FAILED]\e[0m"
+    echo "    ↳ Check logs: $LOG_FILE"
     return 1
   fi
-}
-
-clean_node() {
-  # cleaning remaning setups scripts
-  local NODE="$1"
-  multipass exec "$NODE" -- sudo rm -f "/tmp/$NAME"
 }
 
 load_versions() {

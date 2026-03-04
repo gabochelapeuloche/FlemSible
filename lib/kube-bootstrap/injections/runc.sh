@@ -1,13 +1,14 @@
 # Performing runc installation on both control-plane and worker nodes
-
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Arguments to feed before injecting script into the nodes
+VERSION="${VERSION:-}"
+URL="${URL:-}"
+
+# Hard coded args
 COMPONENT="runc"
 
-# Arguments to feed before injecting script into the nodes
-VERSION="JSONVALUE"
-URL="JSONVALUE"
 BIN_PATH="/usr/local/sbin/runc"
 
 is_installed() {

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Performing kube (kubeadm, kubelet, kubectl) installation on the control-plane node
+# This script will need to be executed directly on workers and cp
 set -Eeuo pipefail
 
 COMPONENT="kubernetes"
@@ -6,9 +8,11 @@ APT_KEYRING="/etc/apt/keyrings/kubernetes-apt-keyring.gpg"
 APT_SOURCE="/etc/apt/sources.list.d/kubernetes.list"
 
 # Arguments to feed before injecting script into the nodes
-VERSION="JSONVALUE"
-URL="JSONVALUE"
-RELEASE_KEY="JSONVALUE"
+VERSION="${VERSION:-}"
+URL="${URL:-}"
+RELEASE_KEY="${RELEASE_KEY:-}"
+
+
 PACKAGE="${VERSION}-1.1"
 
 is_installed() {

@@ -9,7 +9,7 @@ COMPONENT="swapoff"
 
 is_applied () {
   # Function checking if swap is already off
-  swapon --summary | grep -q .
+  [[ -z "$(swapon --summary | grep /)" ]]
 }
 
 apply () {

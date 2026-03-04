@@ -8,11 +8,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 trap 'echo "An error occurred. Check logs."; exit 1' ERR
 
 source "$SCRIPT_DIR/lib/utils.sh"
-source "$SCRIPT_DIR/lib/virtual-infrastructure/injections/network-rules.sh"
+# source "$SCRIPT_DIR/lib/virtual-infrastructure/injections/network-rules.sh"
 source "$SCRIPT_DIR/lib/virtual-infrastructure/vm-provisionning.sh"
 source "$SCRIPT_DIR/lib/kube-bootstrap/node-bootstrap.sh"
 source "$SCRIPT_DIR/lib/kube-bootstrap/injections/host-config.sh"
 require_cmd multipass
+
+LOG_SESSION_DIR="$SCRIPT_DIR/logs/run_$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$LOG_SESSION_DIR"
+export LOG_SESSION_DIR
 
 # 1. Setup
 section "Setting up"

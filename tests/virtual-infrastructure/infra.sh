@@ -1,1 +1,0 @@
-# script testing for up and running vms

@@ -1,10 +1,10 @@
-# Script running only on control plane for booting up the node
-
 #!/usr/bin/env bash
+# Script running only on control plane for booting up the node
+# Only run on control-plane
 set -Eeuo pipefail
 
 # Arguments to feed before injecting script into the nodes
-POD_CIDR="JSONVALUE"
+POD_CIDR="${POD_CIDR:-}"
 
 export KUBECONFIG=/etc/kubernetes/admin.conf
 export PAGER=cat
@@ -14,7 +14,7 @@ NODE_NAME="$(hostname)"
 CP_IP="$(hostname -I | awk '{print $1}')"
 
 is_installed() {
-  # On vérifie si l'api-server est déjà là pour éviter de ré-initialiser
+  # If api-server is already there no need to proceed
   [[ -f /etc/kubernetes/admin.conf ]] && sudo kubectl get nodes --kubeconfig=/etc/kubernetes/admin.conf &>/dev/null
 }
 
@@ -29,7 +29,7 @@ install() {
     --pod-network-cidr="$POD_CIDR" \
     --node-name "$NODE_NAME" \
     --ignore-preflight-errors=all \
-    # | tee /tmp/kubeadm-init.log # 'tee' permet de voir le log dans ton fichier de log hôte aussi
+    # | tee /tmp/kubeadm-init.log
 }
 
 main() {

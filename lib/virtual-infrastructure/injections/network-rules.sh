@@ -1,37 +1,34 @@
-# Applying network rules on different host based on their role
-# This script will need to be executed directly on the host
-
 #!/usr/bin/env bash
+set -Eeuo pipefail
 
-configure_firewall() {
-  local VM="$1"
-  local ROLE="$2" # cp | worker
-  
-  # 1. Extraction sur l'HÔTE (via jq sur le JSON chargé par le parser)
-  local PORTS_LIST=""
-  if [[ "$ROLE" == "cp" ]]; then
-      PORTS_LIST=$(echo "$CP_OPEN_PORTS" | jq -r '. | join(" ")') # conversion du tableau en chaine
-  else
-      PORTS_LIST=$(echo "$W_OPEN_PORTS" | jq -r '. | join(" ")')
-  fi
+# Récupération sécurisée
+NODE_PORTS_RAW="${NODE_PORTS_ARRAY:-[]}"
+CNI_PORTS_RAW="${CNI_PORTS_ARRAY:-[]}"
 
-  # Ajout des ports CNI (Calico, etc.)
-  local CNI_LIST=$(echo "$CALICO_OPEN_PORTS" | jq -r '. | join(" ")')
+apply() {
+  sudo apt-get update >/dev/null
+  sudo apt-get install -y ufw jq >/dev/null
 
-  # 2. Injection dans la commande distante
-  multipass exec "$VM" -- bash -c "
-    set -e
-    sudo apt update && sudo apt install -y ufw
-    sudo ufw --force reset
-    sudo ufw default deny incoming
-    sudo ufw default allow outgoing
+  # Conversion JSON
+  local NODE_PORTS_LIST=$(echo "$NODE_PORTS_RAW" | jq -r '.[]' 2>/dev/null || echo "")
+  local CNI_PORTS_LIST=$(echo "$CNI_PORTS_RAW" | jq -r '.[]' 2>/dev/null || echo "")
 
-    # Les ports sont injectés ici en dur par l'hôte dans la commande
-    for port in $PORTS_LIST $CNI_LIST; do
-      sudo ufw allow \"\$port\"
-    done
+  sudo ufw --force reset >/dev/null
+  sudo ufw default deny incoming
+  sudo ufw default allow outgoing
 
-    sudo ufw --force enable
-    echo \"Firewall configured for $ROLE with ports: $PORTS_LIST $CNI_LIST\"
-  "
+  for port in $NODE_PORTS_LIST $CNI_PORTS_LIST; do
+    if [[ -n "$port" ]]; then
+      sudo ufw allow "$port" >/dev/null
+    fi
+  done
+
+  sudo ufw --force enable >/dev/null
+  echo "[firewall] configured with ports: ${NODE_PORTS_LIST//$'\n'/ }"
 }
+
+main() {
+  apply
+}
+
+[[ "${BASH_SOURCE[0]}" == "$0" ]] && main "$@"

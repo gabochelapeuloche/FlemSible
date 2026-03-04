@@ -1,45 +1,9 @@
 {
   "1.35": {
     "required_operations": {
-      "vms": [
-        "--provide-vm",
-        "--check-ram",
-        "--check-cpu",
-        "--check-hostname-unicity",
-        "--check-mac_address-unicity",
-        "--check-product_uuid-unicity",
-        "--check-connection",
-        "--check-os-version"
-      ],
-      "control-plane": [
-        "--set-ports",
-        "--check-ports",
-        "--swap-off",
-        "--ipv4-forwarding",
-        "--iptables-setup",
-        "--install-container-runtime",
-        "--install-runc",
-        "--install-cni-plugin",
-        "--configure-systemd",
-        "--install-kubeadm",
-        "--configure-crictl",
-        "--init-control-plane",
-        "--install-calico"
-      ],
-      "worker": [
-        "--set-ports",
-        "--check-ports",
-        "--swap-off",
-        "--ipv4-forwarding",
-        "--iptables-setup",
-        "--install-container-runtime",
-        "--install-runc",
-        "--install-cni-plugin",
-        "--configure-systemd",
-        "--install-kubeadm",
-        "--configure-crictl",
-        "--join-worker"
-      ]
+      "vms": [],
+      "control-plane": [],
+      "worker": []
     },
     "virtual-layer": {
       "control-plane": {

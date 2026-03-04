@@ -1,15 +1,15 @@
+#!/usr/bin/env bash
 # Setting up cni plugin on both conrtol-plane and worker nodes
 # This script will need to be executed directly on the host
-
-#!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Arguments to feed before injecting script into the nodes
+VERSION="${VERSION:-}"
+URL="${URL:-}"
+
+# Hard coded args
 COMPONENT="cni-plugins"
 BIN_DIR="/opt/cni/bin"
-
-# Arguments to feed before injecting script into the nodes
-VERSION="JSONVALUE"
-URL="JSONVALUE"
 FILE="$(basename "$URL")"
 
 is_installed() {

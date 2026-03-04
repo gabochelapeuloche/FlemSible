@@ -1,8 +1,7 @@
+#!/usr/bin/env bash
 # Virtual infrastructure bootstrap, creating each vm needed for 
 # each node and performing common tunning for control-plane and
 # workers
-
-#!/usr/bin/env bash
 
 create_vms() {
   # function that creates vms control-planes and workers
@@ -17,9 +16,9 @@ create_vms() {
       --cpus "$CP_CPUS" \
       --memory "$CP_MEMORY" \
       --disk "$CP_DISK"
-    sleep 2 &
+    sleep 2
   done
-  wait
+  
 
   for ((i=1; i<=W_NUMBER; i++)); do
     VMS+=("$W_PREFIX-$i")
@@ -33,27 +32,28 @@ create_vms() {
       --disk "$W_DISK"
     sleep 2
   done
+  
 
-  # Configure firewall in parallel
+  # Configure vms in parallel
   for VM in "${VMS[@]}"; do
-    configure_vm "$VM" &
+    configure_vm "$VM"
     sleep 2
   done
-  wait
 }
 
 configure_vm() {
   # functions that calls the function for vm firewall config
   # and passes if vm is worker or control-plane
-
   local VM="$1"
 
   case "$VM" in
     "$CP_PREFIX"-*)
-      configure_firewall "$VM" "cp" "$CNI"
+      run_on_node_env "$VM" "$SCRIPT_DIR/lib/virtual-infrastructure/injections/network-rules.sh"\
+      "VM=$VM NODE_PORTS_ARRAY='$CP_OPEN_PORTS' CNI_PORTS_ARRAY='$CALICO_OPEN_PORTS'"
       ;;
     "$W_PREFIX"-*)
-      configure_firewall "$VM" "worker" "$CNI"
+      run_on_node_env "$VM" "$SCRIPT_DIR/lib/virtual-infrastructure/injections/network-rules.sh"\
+      "VM=$VM NODE_PORTS_ARRAY='$W_OPEN_PORTS' CNI_PORTS_ARRAY='$CALICO_OPEN_PORTS'"
       ;;
   esac
 

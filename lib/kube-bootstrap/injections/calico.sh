@@ -1,16 +1,16 @@
+#!/usr/bin/env bash
 # Performing calico installation on the control-plane node
 # This script will need to be executed directly on the host
-
-#!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Arguments to pass as environment into the target node
+VERSION="${VERSION:-}"
+OPERATOR_URL="${OPERATOR_URL:-}"
+CUSTOM_RESOURCES_URL="${CUSTOM_RESOURCES_URL:-}"
+
+# Hard coded arguments
 COMPONENT="calico"
 CALICO_NS="calico-system"
-
-# Arguments to feed before injecting script into the nodes
-CALICO_VERSION="JSONVALUE"
-OPERATOR_URL="JSONVALUE"
-CUSTOM_RESOURCES_URL="JSONVALUE"
 
 is_installed() {
   kubectl get ns "$CALICO_NS" >/dev/null 2>&1
@@ -31,7 +31,7 @@ install() {
 
 main() {
   is_installed || install
-  echo "[$COMPONENT] installed and configured"
+  echo "[$COMPONENT] [$VERSION] installed and configured"
 }
 
 [[ "${BASH_SOURCE[0]}" == "$0" ]] && main "$@"

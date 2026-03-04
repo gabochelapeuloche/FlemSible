@@ -1,10 +1,9 @@
+#!/usr/bin/env bash
 # Setting up crictl for containerd on both conrtol-plane and worker nodes
 # This script will need to be executed directly on the host
-
-#!/usr/bin/env bash
-
 set -Eeuo pipefail
 
+# Hard coded args
 COMPONENT="crictl"
 RUNTIME_ENDPOINT="unix:///var/run/containerd/containerd.sock"
 CONFIG_FILE="/etc/crictl.yaml"
