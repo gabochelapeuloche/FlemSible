@@ -11,7 +11,7 @@ apply() {
 
   # Configuration de la politique de Forwarding (CRUCIAL pour Calico/CNI)
   # Par défaut, UFW bloque le transit de paquets entre interfaces.
-  sudo sed -i 's/DEFAULT_FORWARD_POLICY="DROP"/DEFAULT_FORWARD_POLICY="ACCEPT"/' /etc/default/ufw
+  # sudo sed -i 's/DEFAULT_FORWARD_POLICY="DROP"/DEFAULT_FORWARD_POLICY="ACCEPT"/' /etc/default/ufw
 
   # Reset et politiques par défaut
   sudo ufw --force reset >/dev/null
@@ -20,14 +20,13 @@ apply() {
 
   # Autorisations Vitales
   # Autoriser tout sur loopback (indispensable pour les services locaux)
-  sudo ufw allow in on lo >/dev/null
-  sudo ufw allow out on lo >/dev/null
+  # sudo ufw allow in on lo >/dev/null
+  # sudo ufw allow out on lo >/dev/null
 
   # Autoriser le trafic venant des autres nœuds Multipass (Subnet par défaut)
   # Multipass utilise généralement 10.0.0.0/8 ou 192.168.64.0/24 selon l'OS.
-  # On autorise le subnet large pour ne pas se poser de questions.
-  sudo ufw allow from 10.0.0.0/8 >/dev/null
-  sudo ufw allow from 192.168.0.0/16 >/dev/null
+  # sudo ufw allow from 10.0.0.0/8 >/dev/null
+  # sudo ufw allow from 192.168.0.0/16 >/dev/null
 
   # Autoriser le DNS (pour le pull d'images)
   sudo ufw allow 53/udp >/dev/null
