@@ -4,7 +4,7 @@
 > One command, json customizable.
 
 ![Status](https://img.shields.io/badge/status-in_development-yellow)
-![Stack](https://img.shields.io/badge/stack-Bash%20%7C%20Multipass%20%7C%20Kubernetes%20%7C%20MCP-blue)
+![Stack](https://img.shields.io/badge/stack-Bash%20%7C%20Multipass%20%7C%20Kubernetes-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
