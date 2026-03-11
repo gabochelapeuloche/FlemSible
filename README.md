@@ -1,3 +1,14 @@
+# 🤖 FlemSible — Bash k8s cluster provider
+
+> A scripting solution for spinning up full kubeadm and functional kubernetes clusters.  
+> One command, json customizable.
+
+![Status](https://img.shields.io/badge/status-in_development-yellow)
+![Stack](https://img.shields.io/badge/stack-Python%20%7C%20Podman%20%7C%20Kata%20Containers%20%7C%20MCP-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+---
+
 # FlemSibe - K8S Cluster Provider
 
 Tired of setting up k8s cluster in vms on my PC, not wanting to use terraform and ansible right now. This is a bash script that provides vms (leveraging multipass ubuntu) and performs cli actions on them to boot up a kubernetes cluster.
