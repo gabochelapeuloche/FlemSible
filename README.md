@@ -36,7 +36,7 @@ How does it do ?
 6. Install Calico
 
 ## Project tree
-
+~~~ bash
 .
 ├── kubeconfig
 │   └── k8s-cluster.conf
@@ -71,6 +71,7 @@ How does it do ?
 └── versions.json
 
 13 directories, 19 files
+~~~
 
 ## command to run the script
 
