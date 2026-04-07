@@ -4,3 +4,5 @@ kubeconfig/test.conf
 kubeconfig
 tmp
 logs
+CLAUDECONTRIBUTE.md
+images/

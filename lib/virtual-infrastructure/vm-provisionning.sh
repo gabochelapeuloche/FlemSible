@@ -6,39 +6,41 @@
 create_vms() {
   # function that creates vms control-planes and workers
 
+  # Use pre-baked base image when available, otherwise fall back to the OS alias
+  local CP_IMAGE W_IMAGE
+  if [[ -n "${BASE_IMAGE:-}" ]]; then
+    CP_IMAGE="file://$BASE_IMAGE"
+    W_IMAGE="file://$BASE_IMAGE"
+  else
+    CP_IMAGE="$CP_OS_VERSION"
+    W_IMAGE="$W_OS_VERSION"
+  fi
+
   for ((i=1; i<=CP_NUMBER; i++)); do
     VMS+=("$CP_PREFIX-$i")
-
     multipass info "$CP_PREFIX-$i" &>/dev/null && die "La VM $CP_PREFIX-$i existe déjà"
-    
-    multipass launch "$CP_OS_VERSION" \
+    multipass launch "$CP_IMAGE" \
       --name "$CP_PREFIX-$i" \
       --cpus "$CP_CPUS" \
       --memory "$CP_MEMORY" \
       --disk "$CP_DISK"
-    sleep 2
   done
-  
 
   for ((i=1; i<=W_NUMBER; i++)); do
     VMS+=("$W_PREFIX-$i")
-    
     multipass info "$W_PREFIX-$i" &>/dev/null && die "La VM $W_PREFIX-$i existe déjà"
-
-    multipass launch "$CP_OS_VERSION" \
+    multipass launch "$W_IMAGE" \
       --name "$W_PREFIX-$i" \
       --cpus "$W_CPUS" \
       --memory "$W_MEMORY" \
       --disk "$W_DISK"
-    sleep 2
   done
-  
 
-  # Configure vms in parallel
+  # Configure all vms in parallel
   for VM in "${VMS[@]}"; do
-    configure_vm "$VM"
-    sleep 2
+    configure_vm "$VM" &
   done
+  wait
 }
 
 configure_vm() {
@@ -57,12 +59,11 @@ configure_vm() {
       ;;
   esac
 
-  for script in \
-    disable-swap \
-    ipv4-forward \
-    iptables
-  do
-    run_on_node "$VM" "$SCRIPT_DIR/lib/virtual-infrastructure/injections/$script.sh"
-    sleep 1
-  done
+  if [[ -z "${BASE_IMAGE:-}" ]]; then
+    # No pre-baked image — apply kernel/system config
+    for script in disable-swap ipv4-forward iptables; do
+      run_on_node "$VM" "$SCRIPT_DIR/lib/virtual-infrastructure/injections/$script.sh" &
+    done
+    wait
+  fi
 }

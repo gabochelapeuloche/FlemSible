@@ -6,39 +6,34 @@
 prepare_node() {
   # Function that runs on every node to do the common setup
   local NODE="$1"
-  
+
   print_cue "Preparing node $NODE"
-  print_cue "Installing kubernetes components"
-  
-  # Executing containerd script on node
-  run_on_node_env "$NODE" \
-    "$SCRIPT_DIR/lib/kube-bootstrap/injections/containerd.sh" \
-    "VERSION=$CONTAINERD_VERSION CHECK_SUM_URL=$CONTAINERD_URL SERVICE_URL=$CONTAINERD_SERVICE_URL"
-  sleep 2
 
-  # Executing runc script on node
-  run_on_node_env "$NODE" \
-    "$SCRIPT_DIR/lib/kube-bootstrap/injections/runc.sh" \
-    "VERSION=$RUNC_VERSION URL=$RUNC_URL"
-  sleep 2
+  if [[ -z "${BASE_IMAGE:-}" ]]; then
+    # No pre-baked image — install full stack in parallel
+    run_on_node_env "$NODE" \
+      "$SCRIPT_DIR/lib/kube-bootstrap/injections/containerd.sh" \
+      "VERSION=$CONTAINERD_VERSION CHECK_SUM_URL=$CONTAINERD_URL SERVICE_URL=$CONTAINERD_SERVICE_URL" &
 
-  # Executing cni script on node
-  run_on_node_env "$NODE" \
-    "$SCRIPT_DIR/lib/kube-bootstrap/injections/cni.sh" \
-    "VERSION=$CNI_VERSION URL=$CNI_URL"
-  sleep 2
+    run_on_node_env "$NODE" \
+      "$SCRIPT_DIR/lib/kube-bootstrap/injections/runc.sh" \
+      "VERSION=$RUNC_VERSION URL=$RUNC_URL" &
 
-  # Executing kube script on node
-  run_on_node_env "$NODE" \
-    "$SCRIPT_DIR/lib/kube-bootstrap/injections/kube.sh" \
-    "VERSION=$K8S_PATCH URL=$K8S_REPO RELEASE_KEY=$K8S_RELEASE_KEY"
-  sleep 2
+    run_on_node_env "$NODE" \
+      "$SCRIPT_DIR/lib/kube-bootstrap/injections/cni.sh" \
+      "VERSION=$CNI_VERSION URL=$CNI_URL" &
 
-  # Executing crictl-containerd script on node
-  run_on_node_env "$NODE" \
-    "$SCRIPT_DIR/lib/kube-bootstrap/injections/crictl-containerd.sh" \
-    ""
-  sleep 2
+    run_on_node_env "$NODE" \
+      "$SCRIPT_DIR/lib/kube-bootstrap/injections/kube.sh" \
+      "VERSION=$K8S_PATCH URL=$K8S_REPO RELEASE_KEY=$K8S_RELEASE_KEY" &
+
+    wait
+
+    run_on_node_env "$NODE" \
+      "$SCRIPT_DIR/lib/kube-bootstrap/injections/crictl-containerd.sh" \
+      ""
+  fi
+  # With base image: containerd, runc, cni, kube, crictl are all pre-installed — nothing to do
 }
 
 init_control_plane() {
@@ -51,7 +46,6 @@ init_control_plane() {
   run_on_node_env "$NODE_NAME" \
     "$SCRIPT_DIR/lib/kube-bootstrap/injections/kubeadm-init.sh" \
     "POD_CIDR=$CP_POD_CIDR"
-  sleep 2
 
   # VM User 
   multipass exec control-plane-1 -- bash -c '
@@ -71,9 +65,9 @@ join_workers() {
   for NODE in "${VMS[@]}"; do
     [[ "$NODE" == "$CP_NODE" ]] && continue
     print_cue "Joining worker $NODE"
-    multipass exec "$NODE" -- sudo bash -c "$JOIN_CMD"
-    sleep 2
+    multipass exec "$NODE" -- sudo bash -c "$JOIN_CMD" &
   done
+  wait
 }
 
 install_calico_operator() {
