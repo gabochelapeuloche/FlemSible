@@ -1,19 +1,27 @@
-# Disabling swap on both control-plane and worker nodes
-# This script will need to be executed directly on the host
-
 #!/usr/bin/env bash
-
+# =============================================================================
+# lib/virtual-infrastructure/injections/disable-swap.sh — Disable swap.
+#
+# Kubernetes requires swap to be off on every node. Disables swap immediately
+# and comments out any swap entries in /etc/fstab to survive reboots.
+# Baked into the base image — skipped at provision time when BASE_IMAGE is set.
+#
+# Runs on:  all nodes
+# Injected: (none)
+# =============================================================================
 set -Eeuo pipefail
 
 COMPONENT="swapoff"
 
-is_applied () {
-  # Function checking if swap is already off
+# is_applied
+# Return 0 if swap is already fully disabled, 1 otherwise.
+is_applied() {
   [[ -z "$(swapon --summary | grep /)" ]]
 }
 
-apply () {
-  # Disabeleing swap
+# apply
+# Disable active swap and comment out swap entries in /etc/fstab.
+apply() {
   if swapon --summary | grep -q .; then
     sudo swapoff -a
   fi
@@ -22,9 +30,9 @@ apply () {
   fi
 }
 
-main () {
+main() {
   is_applied || apply
-  echo "[$COMPONENT] installed and configured"
+  echo "[$COMPONENT] applied"
 }
 
 [[ "${BASH_SOURCE[0]}" == "$0" ]] && main "$@"

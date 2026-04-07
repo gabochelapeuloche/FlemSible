@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
-# Host-side orchestration for kube-prometheus-stack
+# =============================================================================
+# lib/kube-services/prometheus.sh — Host-side orchestration for Prometheus.
+#
+# Provides install_prometheus, which deploys kube-prometheus-stack via Helm
+# on the control-plane node by delegating to the node-side injection script.
+#
+# Sourced by: main.sh
+# Globals consumed: CP_PREFIX, PROMETHEUS_*, SCRIPT_DIR
+# =============================================================================
 
+# install_prometheus
+# Deploy kube-prometheus-stack via Helm on the control-plane node.
+# Uses the prometheus injection script for the actual Helm install.
+# Globals: CP_PREFIX (r), PROMETHEUS_CHART_VERSION (r), PROMETHEUS_REPO_URL (r),
+#          PROMETHEUS_REPO_NAME (r), PROMETHEUS_CHART (r),
+#          PROMETHEUS_NAMESPACE (r), PROMETHEUS_RELEASE (r), SCRIPT_DIR (r)
 install_prometheus() {
   local CP_NODE="${CP_PREFIX}-1"
   print_cue "Installing kube-prometheus-stack $PROMETHEUS_CHART_VERSION on $CP_NODE"

@@ -1,16 +1,32 @@
 #!/usr/bin/env bash
+# =============================================================================
+# lib/kube-bootstrap/node-bootstrap.sh — Kubernetes cluster bootstrap logic.
+#
+# Handles per-node runtime installation, control-plane initialisation,
+# worker join, and Calico CNI deployment. All functions run from the host
+# and delegate work to injection scripts via run_on_node / run_on_node_env.
+#
+# Sourced by: main.sh
+# Globals consumed: CP_PREFIX, W_PREFIX, VMS, BASE_IMAGE, K8S_PATCH,
+#                   K8S_REPO, K8S_RELEASE_KEY, CP_POD_CIDR, SCRIPT_DIR,
+#                   CONTAINERD_*, RUNC_*, CNI_*, CALICO_*
+# =============================================================================
 
-# This file contains functions to call from host and run scripts on passed as argument nodes 
-# Those functions prepare the virtual machines to receive a node (master or control-plane)
-
+# prepare_node [node_name]
+# Install the Kubernetes runtime stack on a single node. When BASE_IMAGE is
+# set the image already contains containerd, runc, cni, kubeadm, kubelet,
+# kubectl, and crictl — the function is a no-op in that case.
+# When no base image is used, all components are installed in parallel.
+# Arguments: $1 = VM name
+# Globals: BASE_IMAGE (r), SCRIPT_DIR (r), CONTAINERD_* (r), RUNC_* (r),
+#          CNI_* (r), K8S_* (r)
 prepare_node() {
-  # Function that runs on every node to do the common setup
   local NODE="$1"
 
   print_cue "Preparing node $NODE"
 
   if [[ -z "${BASE_IMAGE:-}" ]]; then
-    # No pre-baked image — install full stack in parallel
+    # No pre-baked image — install full runtime stack in parallel
     run_on_node_env "$NODE" \
       "$SCRIPT_DIR/lib/kube-bootstrap/injections/containerd.sh" \
       "VERSION=$CONTAINERD_VERSION CHECK_SUM_URL=$CONTAINERD_URL SERVICE_URL=$CONTAINERD_SERVICE_URL" &
@@ -29,16 +45,22 @@ prepare_node() {
 
     wait
 
+    # crictl config runs after kube packages (provides the crictl binary)
     run_on_node_env "$NODE" \
       "$SCRIPT_DIR/lib/kube-bootstrap/injections/crictl-containerd.sh" \
       ""
   fi
-  # With base image: containerd, runc, cni, kube, crictl are all pre-installed — nothing to do
+  # With base image: containerd, runc, cni, kubeadm/kubelet/kubectl, and
+  # crictl are all pre-installed — nothing to do here.
 }
 
+# init_control_plane
+# Run kubeadm init on the first control-plane node and copy the admin
+# kubeconfig into the ubuntu user's home directory for in-VM kubectl access.
+# Globals: CP_PREFIX (r), CP_POD_CIDR (r), SCRIPT_DIR (r)
 init_control_plane() {
-  # Function that initialize control-plane nodes
-  NODE_NAME="${CP_PREFIX}-1"
+  local NODE_NAME="${CP_PREFIX}-1"
+  local CP_IP
   CP_IP=$(multipass exec "$NODE_NAME" -- hostname -I | awk '{print $1}')
 
   print_cue "Initializing control-plane on $NODE_NAME ($CP_IP)"
@@ -47,8 +69,8 @@ init_control_plane() {
     "$SCRIPT_DIR/lib/kube-bootstrap/injections/kubeadm-init.sh" \
     "POD_CIDR=$CP_POD_CIDR"
 
-  # VM User 
-  multipass exec control-plane-1 -- bash -c '
+  # Make kubeconfig accessible to the ubuntu user inside the VM
+  multipass exec "$NODE_NAME" -- bash -c '
     mkdir -p $HOME/.kube
     sudo cp /etc/kubernetes/admin.conf $HOME/.kube/config
     sudo chown $(id -u):$(id -g) $HOME/.kube/config
@@ -56,12 +78,15 @@ init_control_plane() {
   '
 }
 
+# join_workers
+# Generate a kubeadm join token on the control-plane and apply it to all
+# worker nodes in parallel. Skips the control-plane VM itself.
+# Globals: CP_PREFIX (r), VMS (r)
 join_workers() {
-  # Function that joins wrokers to the cluster
-  CP_NODE="$CP_PREFIX-1"
-
+  local CP_NODE="$CP_PREFIX-1"
+  local JOIN_CMD
   JOIN_CMD=$(multipass exec "$CP_NODE" -- sudo kubeadm token create --print-join-command)
-  
+
   for NODE in "${VMS[@]}"; do
     [[ "$NODE" == "$CP_NODE" ]] && continue
     print_cue "Joining worker $NODE"
@@ -70,13 +95,15 @@ join_workers() {
   wait
 }
 
+# install_calico_operator
+# Deploy the Tigera operator and Calico custom resources on the control-plane.
+# Globals: CP_PREFIX (r), CALICO_VERSION (r), CALICO_TIGERA_OPERATOR (r),
+#          CALICO_CRD_URL (r), SCRIPT_DIR (r)
 install_calico_operator() {
-  # function installing the calico operator
   local CP_NODE="${CP_PREFIX}-1"
 
   print_cue "Installing Calico (Tigera Operator) on $CP_NODE"
 
-  # Execution
   run_on_node_env "$CP_NODE" \
     "$SCRIPT_DIR/lib/kube-bootstrap/injections/calico.sh" \
     "VERSION=$CALICO_VERSION OPERATOR_URL=$CALICO_TIGERA_OPERATOR CUSTOM_RESOURCES_URL=$CALICO_CRD_URL"

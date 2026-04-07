@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
-# Install ArgoCD via Helm on the control-plane node
+# =============================================================================
+# lib/kube-services/injections/argocd.sh — ArgoCD install via Helm.
+#
+# Installs ArgoCD on the control-plane node using the official Helm chart.
+# Configures insecure mode (HTTP) and exposes the UI as a NodePort on :30090.
+# Prints the generated admin password after install — change it immediately.
+#
+# Runs on:  control-plane-1 only
+# Injected: CHART_VERSION, REPO_URL, REPO_NAME, CHART, NAMESPACE, RELEASE
+# =============================================================================
 set -Eeuo pipefail
 
 CHART_VERSION="${CHART_VERSION:-}"
@@ -12,10 +21,15 @@ COMPONENT="argocd"
 
 export KUBECONFIG=/etc/kubernetes/admin.conf
 
+# is_installed
+# Return 0 if the ArgoCD Helm release is already deployed, 1 otherwise.
 is_installed() {
   helm status "$RELEASE" -n "$NAMESPACE" >/dev/null 2>&1
 }
 
+# install
+# Add the ArgoCD Helm repo, deploy the chart on NodePort :30090, then print
+# the generated admin password from the initial admin secret.
 install() {
   echo "[$COMPONENT] adding Helm repo $REPO_NAME → $REPO_URL"
   helm repo add "$REPO_NAME" "$REPO_URL"

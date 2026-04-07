@@ -1,16 +1,25 @@
 #!/usr/bin/env bash
-# Builds a pre-baked base image with the full shared node stack installed:
+# =============================================================================
+# tools/build-base-image.sh — Pre-baked base image builder.
+#
+# Launches a temporary Ubuntu Minimal VM, installs the full shared node stack
+# (system config, container runtime, Kubernetes tools, shared images), exports
+# the disk image, and registers it in versions.json.
+#
+# The resulting image is used by main.sh to skip provisioning on every cluster
+# spin-up, significantly reducing cold-start time.
+#
+# Installed into the image:
 #   System:   swap-off, ipv4-forward, iptables-bridge
 #   Runtime:  containerd, runc, cni-plugins
-#   K8s:      kubeadm, kubelet, kubectl, crictl config  (all nodes need these)
-#   Images:   pause, kube-proxy (shared node images — CP-specific pulled at kubeadm init)
-#
-# Uses Ubuntu Minimal as the base (no snap, no python, no docs — ~40% smaller than noble).
+#   K8s:      kubeadm, kubelet, kubectl, crictl config (shared by all nodes)
+#   Images:   pause, kube-proxy (shared node images — CP-specific pulled later)
 #
 # Usage:
 #   tools/build-base-image.sh [K8S_VERSION_KEY]   (default: 1.35_base)
 #
-# After building, versions.json is updated automatically.
+# After building, versions.json is updated with the image path automatically.
+# =============================================================================
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,6 +32,10 @@ K8S_VERSION="${1:-1.35_base}"
 BUILDER_NAME="base-image-builder"
 OUTPUT_DIR="$SCRIPT_DIR/images"
 
+# find_vault_image
+# Search known Multipass vault paths for the builder VM disk image.
+# Tries a set of candidate paths first, then falls back to a broad filesystem
+# search. Prints the first matching .img path and returns.
 find_vault_image() {
   local candidates=(
     "/var/snap/multipass/common/data/multipassd/vault/instances/$BUILDER_NAME"
@@ -37,7 +50,7 @@ find_vault_image() {
   sudo find / -maxdepth 10 -path "*multipass*/$BUILDER_NAME/*.img" 2>/dev/null | head -1
 }
 
-# Ubuntu Minimal 24.04 — no snapd, no Python, no man pages
+# Ubuntu Minimal 24.04 — no snapd, no Python, no man pages (~40% smaller than noble)
 MINIMAL_IMAGE="https://cloud-images.ubuntu.com/minimal/releases/noble/release/ubuntu-24.04-minimal-cloudimg-amd64.img"
 
 export LOG_SESSION_DIR
@@ -50,6 +63,7 @@ OUTPUT_IMAGE="$OUTPUT_DIR/base-node-${K8S_VERSION}.img"
 
 [[ ! -f "$OUTPUT_IMAGE" ]] || die "Image already exists: $OUTPUT_IMAGE — delete it first to rebuild."
 
+# On error: purge the builder VM to avoid leaving orphaned instances
 trap 'multipass delete "$BUILDER_NAME" --purge 2>/dev/null || true' ERR
 
 section "Launching base builder VM (Ubuntu Minimal 24.04)"
@@ -61,6 +75,7 @@ multipass launch "$MINIMAL_IMAGE" \
   --disk 15G
 
 section "Configuring kernel / system settings"
+# Run system config scripts in parallel — they are independent of each other
 for script in disable-swap ipv4-forward iptables; do
   run_on_node "$BUILDER_NAME" "$SCRIPT_DIR/lib/virtual-infrastructure/injections/$script.sh" &
 done
@@ -96,8 +111,8 @@ run_on_node "$BUILDER_NAME" \
   "$SCRIPT_DIR/lib/kube-bootstrap/injections/crictl-containerd.sh"
 
 section "Pre-pulling shared node images (pause + kube-proxy)"
-# Only pull images shared by all nodes — CP-specific images (apiserver, etcd, scheduler…)
-# are pulled at kubeadm init time on the control-plane only.
+# Only pull images shared by all nodes — CP-specific images (apiserver, etcd,
+# scheduler, etc.) are pulled at kubeadm init time on the control-plane only.
 multipass exec "$BUILDER_NAME" -- sudo bash -c "
   kubeadm config images list --kubernetes-version ${K8S_PATCH} \
     | grep -E 'pause|kube-proxy' \
@@ -108,6 +123,7 @@ multipass exec "$BUILDER_NAME" -- sudo bash -c "
 "
 
 section "Cleaning up image before export"
+# Zero-fill free space so the copy compresses well
 multipass exec "$BUILDER_NAME" -- sudo bash -c '
   apt-get autoremove --purge -y -qq
   apt-get clean

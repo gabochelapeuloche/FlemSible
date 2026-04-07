@@ -1,12 +1,33 @@
-# Main file of the script orchestrating the setup of a virtual kubernetes cluster on
-# ubuntu machines using multipass
 #!/usr/bin/env bash
+# =============================================================================
+# main.sh — FlemSible entry point.
+#
+# Orchestrates a full Kubernetes cluster spin-up on Multipass VMs:
+#   1. Parse user inputs and load version config from versions.json
+#   2. Launch VMs (using pre-baked base image if configured)
+#   3. Provision all nodes in parallel (system, runtime, k8s tools)
+#   4. Bootstrap the control-plane (kubeadm init, kubeconfig export)
+#   5. Join worker nodes in parallel
+#   6. Install Calico CNI and wait for cluster readiness
+#   7. Install optional services (Helm, Harbor, Prometheus, ArgoCD, Istio, Envoy)
+#
+# On any error the ERR trap fires cleanup(), which purges all VMs tracked in
+# the VMS array to avoid leaving orphaned Multipass instances.
+#
+# Usage:
+#   ./main.sh [K8S_VERSION_KEY] [--workers N] [--cpus N] [--memory Ng]
+# =============================================================================
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# VMS tracks every VM created during this run, used by cleanup() on ERR.
 VMS=()
 
+# cleanup
+# Purge all VMs created during this run.
+# Called automatically by the ERR trap — not intended for direct use.
+# Globals: VMS (r)
 cleanup() {
   [[ ${#VMS[@]} -eq 0 ]] && return
   echo ""
@@ -35,64 +56,73 @@ LOG_SESSION_DIR="$SCRIPT_DIR/logs/run_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$LOG_SESSION_DIR"
 export LOG_SESSION_DIR
 
-# Setup
-user_inputs "$@"
-get_version_info "${K8S_VERSION:-1.35_base}"
-validate_config
-
-# Virtual layer creation
-section "VMs Spin Up"
-create_vms
-
-# Provisioning (Parallelisme on each nodes)
-section "🛠 Preparing Nodes"
-for NODE in "${VMS[@]}"; do
-  prepare_node "$NODE" &
-done
-wait
-
-# K8s Orchestration
-section "☸️  Initializing Cluster"
-init_control_plane
-export_kubeconfig_to_host
-
-# Joining workers
-section "🤝 Joining Workers"
-join_workers
-
-# Helm CLI (required before any Helm-based service)
-[[ "$TOOL_HELM" == "true" ]] && { section "⎈  Installing Helm"; install_helm; }
-
-# Calico bootstraping
-section "🌐 Installing Network Plugin"
-install_calico_operator
-
+# all_nodes_ready
+# Return 0 when every node in the cluster reports Ready status, 1 otherwise.
+# Used to gate service installs until the cluster is fully functional.
+# Globals: KUBECONFIG (r, set by export_kubeconfig_to_host)
 all_nodes_ready() {
   local statuses
   statuses=$(kubectl get nodes --no-headers 2>/dev/null | awk '{print $2}')
   [[ -n "$statuses" ]] && ! echo "$statuses" | grep -qv "Ready"
 }
 
+# calico_ready
+# Return 0 when all pods in calico-system are Running, 1 otherwise.
+# Calico must be fully operational before installing mesh-layer services.
+# Globals: KUBECONFIG (r, set by export_kubeconfig_to_host)
 calico_ready() {
   local statuses
   statuses=$(kubectl get pods -n calico-system --no-headers 2>/dev/null | awk '{print $3}')
   [[ -n "$statuses" ]] && ! echo "$statuses" | grep -qv "Running"
 }
 
-# Wait for all nodes Ready, then Calico pods Running before installing services
-section "⏳ Waiting for cluster"
+# --- Setup ---
+user_inputs "$@"
+get_version_info "${K8S_VERSION:-1.35_base}"
+validate_config
+
+# --- Virtual layer ---
+section "VMs Spin Up"
+create_vms
+
+# --- Node provisioning (parallel across all nodes) ---
+section "Preparing Nodes"
+for NODE in "${VMS[@]}"; do
+  prepare_node "$NODE" &
+done
+wait
+
+# --- Kubernetes bootstrap ---
+section "Initializing Cluster"
+init_control_plane
+export_kubeconfig_to_host
+
+section "Joining Workers"
+join_workers
+
+# Helm CLI must be installed before any Helm-based service can be deployed
+[[ "$TOOL_HELM" == "true" ]] && { section "Installing Helm"; install_helm; }
+
+# --- Network plugin ---
+section "Installing Network Plugin"
+install_calico_operator
+
+# --- Cluster readiness gate ---
+# All nodes must be Ready and all Calico pods Running before installing services.
+# Services that start too early (before CNI is functional) will fail to schedule.
+section "Waiting for cluster"
 until all_nodes_ready;  do echo -n "." && sleep 3; done; echo
 until calico_ready;     do echo -n "." && sleep 3; done; echo
 
-section "Cluster ready 🎉"
+section "Cluster ready"
 kubectl get nodes
 
-# Optional services
-# Istio first — mesh infrastructure must be up before services that may use sidecars
-[[ "$TOOL_ISTIO" == "true" ]] && { section "🕸️  Installing Istio"; install_istio; }
+# --- Optional services ---
+# Istio first: mesh infrastructure must be up before sidecar-injected services
+[[ "$TOOL_ISTIO" == "true" ]] && { section "Installing Istio"; install_istio; }
 
 # Remaining services are independent — install in parallel
-section "🛠 Installing services"
+section "Installing services"
 [[ "$TOOL_HARBOR" == "true" ]]     && install_harbor &
 [[ "$TOOL_PROMETHEUS" == "true" ]] && install_prometheus &
 [[ "$TOOL_ARGOCD" == "true" ]]     && install_argocd &

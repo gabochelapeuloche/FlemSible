@@ -1,10 +1,5 @@
 {
   "1.35_base": {
-    "required_operations": {
-      "vms": [],
-      "control-plane": [],
-      "worker": []
-    },
     "virtual-layer": {
       "base_image": "/home/leg/Documents/Projets/k8s-setup/images/base-node-1.35_base.img",
       "control-plane": {
@@ -32,7 +27,7 @@
           "30000:32767/tcp",
           "30000:32767/udp"
         ],
-        "os_version": "noble",
+        "os-version": "noble",
         "cpus": 2,
         "memory": "2G",
         "disk": "15G"

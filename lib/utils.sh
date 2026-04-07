@@ -1,22 +1,36 @@
 #!/usr/bin/env bash
-# Utilities for logging, error handling and CLI parsing
+# =============================================================================
+# lib/utils.sh — Shared utilities: logging, timing, error handling, CLI
+#                parsing, node execution, and version config loading.
+#
+# Sourced by: main.sh, tools/build-base-image.sh
+# Exports:    print_cue, section, print_total_time, die, require_cmd,
+#             is_number, is_storage, validate_config, usage, user_inputs,
+#             run_on_node_env, run_on_node, get_version_info
+# =============================================================================
 
+# print_cue [message...]
+# Print a human-readable status line to stdout.
+# Reserved for script state and UI output — not for per-node logs.
 print_cue() {
-  # printing informations for verbose option (reserved for script state and UI not logging)
-  # [[ "${VERBOSE:-false}" == true ]] || return 0
   printf "%b\n" "$*"
 }
 
-# Timing state — set when utils.sh is sourced (i.e. at script start)
+# ---------------------------------------------------------------------------
+# Timing — state variables set when utils.sh is sourced (i.e. at script start)
+# ---------------------------------------------------------------------------
 _SCRIPT_START=$(date +%s)
 _SECTION_START=0
 _SECTION_NAME=""
 
+# section [name...]
+# Print a named section header. Prints elapsed seconds for the previous
+# section before opening the new one.
+# Globals: _SECTION_START (rw), _SECTION_NAME (rw)
 section() {
   local now
   now=$(date +%s)
 
-  # Print elapsed time for the section that just finished
   if [[ -n "$_SECTION_NAME" && "$_SECTION_START" -gt 0 ]]; then
     printf "    ↳ %ds\n" "$(( now - _SECTION_START ))"
   fi
@@ -27,10 +41,13 @@ section() {
   print_cue "=== $* ==="
 }
 
+# print_total_time
+# Close the last open section and print total elapsed time since script start.
+# Called once at the end of main.sh.
+# Globals: _SCRIPT_START (r), _SECTION_START (rw), _SECTION_NAME (r)
 print_total_time() {
   local now elapsed
   now=$(date +%s)
-  # Close the last open section
   if [[ -n "$_SECTION_NAME" && "$_SECTION_START" -gt 0 ]]; then
     printf "    ↳ %ds\n" "$(( now - _SECTION_START ))"
     _SECTION_START=0
@@ -39,52 +56,62 @@ print_total_time() {
   printf "\nTotal: %dm%02ds\n" "$(( elapsed / 60 ))" "$(( elapsed % 60 ))"
 }
 
+# die [message...]
+# Print an error message to stderr and exit with code 1.
 die() {
-  # Error handling function
   printf "❌ %b\n" "$*" >&2
   exit 1
 }
 
+# require_cmd [command]
+# Assert that a command is available on the host; die if not.
 require_cmd() {
-  # Requirements check function
   command -v "$1" &>/dev/null || die "$1 n'est pas installé"
 }
 
+# is_number [value]
+# Return 0 if value is a non-negative integer, 1 otherwise.
 is_number() {
-  # Helper checking if an arg conforms to number
   [[ "$1" =~ ^[0-9]+$ ]]
 }
 
+# is_storage [value]
+# Return 0 if value matches the XM or XG storage format (e.g. 2G, 512M).
 is_storage() {
-  # Helper checking if an arg conforms to storage
   [[ "$1" =~ ^[0-9]+[MG]$ ]]
 }
 
+# validate_config
+# Assert that the required cluster size variables are within valid bounds.
+# Globals: CP_NUMBER (r), W_NUMBER (r)
 validate_config() {
-  # Global validation
   [[ "$CP_NUMBER" -ge 1 ]] || die "CP_NUMBER must be >= 1"
   [[ "$W_NUMBER" -ge 0 ]] || die "W_NUMBER must be >= 0"
 }
 
+# usage
+# Print CLI usage to stdout.
 usage() {
-  # Usage printing when help option is used
   cat <<EOF
 Usage: $0 [options]
 
 Options:
-  --cp-number N
-  --w-number N
-  --cpus N
-  --memory XG
-  --disk XG
-  --network NAME
-  --verbose
-  -h, --help
+  --version KEY   Version profile key in versions.json (default: 1.35_base)
+  --cp-number N   Number of control-plane nodes
+  --w-number N    Number of worker nodes
+  --cpus N        vCPUs per VM
+  --memory XG     RAM per VM (e.g. 2G)
+  --disk XG       Disk per VM (e.g. 15G)
+  --network NAME  Multipass network name
+  --verbose       Enable verbose output
+  -h, --help      Show this help
 EOF
 }
 
+# user_inputs [args...]
+# Parse CLI flags and store overrides in *_USER variables.
+# Values are applied after get_version_info so they take precedence.
 user_inputs() {
-  # CLI options parsing
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -h|--help)
@@ -93,32 +120,31 @@ user_inputs() {
         ;;
       --version)
         K8S_VERSION="$2"
-        # is_number "$CP_NUMBER" || die "CP_NUMBER doit être un entier"
         shift 2
         ;;
       --cp-number)
         CP_NUMBER_USER="$2"
-        is_number "$CP_NUMBER" || die "CP_NUMBER doit être un entier"
+        is_number "$CP_NUMBER_USER" || die "CP_NUMBER doit être un entier"
         shift 2
         ;;
       --w-number)
         W_NUMBER_USER="$2"
-        is_number "$W_NUMBER" || die "W_NUMBER doit être un entier"
+        is_number "$W_NUMBER_USER" || die "W_NUMBER doit être un entier"
         shift 2
         ;;
       --cpus)
         CPUS_USER="$2"
-        is_number "$CPUS" || die "CPUS doit être un entier"
+        is_number "$CPUS_USER" || die "CPUS doit être un entier"
         shift 2
         ;;
       --memory)
         MEMORY_USER="$2"
-        is_storage "$MEMORY" || die "MEMORY doit être de la forme XG"
+        is_storage "$MEMORY_USER" || die "MEMORY doit être de la forme XG"
         shift 2
         ;;
       --disk)
         DISK_USER="$2"
-        is_storage "$DISK" || die "DISK doit être de la forme XG"
+        is_storage "$DISK_USER" || die "DISK doit être de la forme XG"
         shift 2
         ;;
       --network)
@@ -136,11 +162,17 @@ user_inputs() {
   done
 }
 
+# run_on_node_env [node] [script_path] [env_vars]
+# Transfer a script to a VM and execute it with injected environment variables.
+# Output is logged to $LOG_SESSION_DIR/<node>.log; console shows [OK]/[FAILED].
+# Arguments: $1 = VM name, $2 = local script path, $3 = "VAR=val VAR2=val2"
+# Globals: LOG_SESSION_DIR (r)
 run_on_node_env() {
   local NODE="$1"
   local SRC="$2"
   local VARS="${3:-}"
-  local NAME=$(basename "$SRC")
+  local NAME
+  NAME=$(basename "$SRC")
   local LOG_FILE="$LOG_SESSION_DIR/${NODE}.log"
 
   printf "  %-15s | %-20s | " "$NODE" "$NAME"
@@ -156,10 +188,15 @@ run_on_node_env() {
   fi
 }
 
+# run_on_node [node] [script_path]
+# Transfer a script to a VM and execute it without extra environment variables.
+# Arguments: $1 = VM name, $2 = local script path
+# Globals: LOG_SESSION_DIR (r)
 run_on_node() {
   local NODE="$1"
   local SRC="$2"
-  local NAME=$(basename "$SRC")
+  local NAME
+  NAME=$(basename "$SRC")
   local LOG_FILE="$LOG_SESSION_DIR/${NODE}.log"
 
   printf "  %-15s | %-20s | " "$NODE" "$NAME"
@@ -175,11 +212,13 @@ run_on_node() {
   fi
 }
 
-load_versions() {
-  # loading global variables to feed to the script
-  get_version_info "$K8S_VERSION"
-}
-
+# get_version_info [version_key]
+# Parse the versions.json block for the given key and eval all variables
+# into the current shell in a single jq pass.
+# Arguments: $1 = key in versions.json (e.g. "1.35_base")
+# Globals:   SCRIPT_DIR (r), exports all CP_*, W_*, K8S_*, CONTAINERD_*,
+#            RUNC_*, CNI_*, CALICO_*, HELM_*, HARBOR_*, TOOL_*, and
+#            chart config variables for each optional service.
 get_version_info() {
   local VERSION=$1
   local JSON_FILE="$SCRIPT_DIR/versions.json"
@@ -188,7 +227,6 @@ get_version_info() {
   jq -e --arg v "$VERSION" 'has($v)' "$JSON_FILE" > /dev/null \
     || die "Version '$VERSION' not found in versions.json"
 
-  # Parse entire version block in a single jq invocation
   local assignments
   assignments=$(jq -r --arg v "$VERSION" '
     .[$v] as $ver |
@@ -218,7 +256,7 @@ get_version_info() {
     "W_PREFIX=\($w.name | @sh)",
     "W_NUMBER=\($w.count | @sh)",
     "W_OPEN_PORTS=\($w.ports // [] | tojson | @sh)",
-    "W_OS_VERSION=\(($w["os-version"] // $w.os_version) | @sh)",
+    "W_OS_VERSION=\($w["os-version"] | @sh)",
     "W_CPUS=\($w.cpus | @sh)",
     "W_MEMORY=\($w.memory | @sh)",
     "W_DISK=\($w.disk | @sh)",

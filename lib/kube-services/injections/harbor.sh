@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
-# Install Harbor registry via Helm on the control-plane node
+# =============================================================================
+# lib/kube-services/injections/harbor.sh — Harbor container registry install.
+#
+# Installs Harbor via Helm on the control-plane node, exposed as a NodePort
+# service on port 30002. The external URL is injected by the host-side
+# orchestrator so Harbor's self-referencing links point to the right address.
+#
+# Runs on:  control-plane-1 only
+# Injected: CHART_VERSION, REPO_URL, REPO_NAME, CHART, NAMESPACE, RELEASE,
+#           EXTERNAL_URL
+# =============================================================================
 set -Eeuo pipefail
 
 CHART_VERSION="${CHART_VERSION:-}"
@@ -13,10 +23,14 @@ COMPONENT="harbor"
 
 export KUBECONFIG=/etc/kubernetes/admin.conf
 
+# is_installed
+# Return 0 if the Harbor Helm release is already deployed, 1 otherwise.
 is_installed() {
   helm status "$RELEASE" -n "$NAMESPACE" >/dev/null 2>&1
 }
 
+# install
+# Add the Harbor Helm repo and deploy the chart with NodePort and external URL.
 install() {
   echo "[$COMPONENT] adding Helm repo $REPO_NAME → $REPO_URL"
   helm repo add "$REPO_NAME" "$REPO_URL"
@@ -28,21 +42,16 @@ install() {
     --create-namespace \
     --version "$CHART_VERSION" \
     --set expose.type=nodePort \
+    --set expose.nodePort.ports.http.nodePort=30002 \
     --set expose.tls.enabled=false \
     --set externalURL="$EXTERNAL_URL" \
-    --set persistence.enabled=false \
     --wait \
     --timeout 10m
-
-  echo ""
-  echo "[$COMPONENT] Harbor portal : $EXTERNAL_URL"
-  echo "[$COMPONENT] Default login : admin / Harbor12345"
-  echo "[$COMPONENT] Change the password immediately after first login."
 }
 
 main() {
   is_installed || install
-  echo "[$COMPONENT] ready"
+  echo "[$COMPONENT] UI → $EXTERNAL_URL  (admin / Harbor12345)"
 }
 
 [[ "${BASH_SOURCE[0]}" == "$0" ]] && main "$@"

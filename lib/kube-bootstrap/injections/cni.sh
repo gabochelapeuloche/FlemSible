@@ -1,21 +1,32 @@
 #!/usr/bin/env bash
-# Setting up cni plugin on both conrtol-plane and worker nodes
-# This script will need to be executed directly on the host
+# =============================================================================
+# lib/kube-bootstrap/injections/cni.sh — CNI plugins installation.
+#
+# Downloads and installs the standard CNI plugins (bridge, loopback, host-local,
+# etc.) to /opt/cni/bin. These are the low-level network plugins used by
+# containerd and required by Calico. Baked into the base image — skipped at
+# provision time when BASE_IMAGE is set.
+#
+# Runs on:  all nodes
+# Injected: VERSION, URL (tarball download URL)
+# =============================================================================
 set -Eeuo pipefail
 
-# Arguments to feed before injecting script into the nodes
 VERSION="${VERSION:-}"
 URL="${URL:-}"
 
-# Hard coded args
 COMPONENT="cni-plugins"
 BIN_DIR="/opt/cni/bin"
 FILE="$(basename "$URL")"
 
+# is_installed
+# Return 0 if the bridge CNI plugin binary exists, 1 otherwise.
 is_installed() {
   [[ -x "$BIN_DIR/bridge" ]]
 }
 
+# install
+# Download the CNI plugins tarball and extract all binaries to BIN_DIR.
 install() {
   curl -fsSLO "$URL"
   sudo mkdir -p "$BIN_DIR"
