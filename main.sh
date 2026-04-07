@@ -55,10 +55,23 @@ join_workers
 section "🌐 Installing Network Plugin"
 install_calico_operator
 
-# Final Check
-until kubectl get nodes | grep -q "Ready"; do
-    echo -n "." && sleep 2
-done
+all_nodes_ready() {
+  local statuses
+  statuses=$(kubectl get nodes --no-headers 2>/dev/null | awk '{print $2}')
+  [[ -n "$statuses" ]] && ! echo "$statuses" | grep -qv "Ready"
+}
+
+calico_ready() {
+  local statuses
+  statuses=$(kubectl get pods -n calico-system --no-headers 2>/dev/null | awk '{print $3}')
+  [[ -n "$statuses" ]] && ! echo "$statuses" | grep -qv "Running"
+}
+
+# Wait for all nodes Ready, then Calico pods Running before installing services
+section "⏳ Waiting for cluster"
+until all_nodes_ready;  do echo -n "." && sleep 3; done; echo
+until calico_ready;     do echo -n "." && sleep 3; done; echo
+
 section "Cluster ready 🎉"
 kubectl get nodes
 
@@ -75,3 +88,6 @@ section "🛠 Installing services"
 wait
 
 print_total_time
+echo ""
+echo "To access the cluster, run:"
+echo "  export KUBECONFIG=$SCRIPT_DIR/kubeconfig/k8s-cluster.conf"
