@@ -195,6 +195,33 @@ To use as a pull-through cache:
 
 ---
 
+## Per-step timing
+
+Every section prints its elapsed time when the next section starts, and a total is printed at the end:
+
+```
+=== VMs Spin Up ===
+    ↳ 43s
+
+=== Preparing Nodes ===
+    ↳ 8s          ← near-instant with base image
+
+=== Initializing Cluster ===
+    ↳ 67s
+
+=== Joining Workers ===
+    ↳ 14s         ← parallel joins
+
+=== Cluster ready 🎉 ===
+    ↳ 12s
+
+Total: 4m12s
+```
+
+Timing starts when `utils.sh` is sourced (script entry) and is tracked in `_SCRIPT_START`, `_SECTION_START`, and `_SECTION_NAME` shell variables. No external tools required — uses `date +%s`.
+
+---
+
 ## Running tests
 
 Tests are pure Bash — no external test framework required. `multipass` and `run_on_node*` are mocked so suites run without a live cluster.

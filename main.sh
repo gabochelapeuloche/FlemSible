@@ -73,3 +73,5 @@ section "🛠 Installing services"
 [[ "$TOOL_ARGOCD" == "true" ]]     && install_argocd &
 [[ "$TOOL_ENVOY" == "true" ]]      && install_envoy &
 wait
+
+print_total_time

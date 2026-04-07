@@ -7,10 +7,36 @@ print_cue() {
   printf "%b\n" "$*"
 }
 
+# Timing state — set when utils.sh is sourced (i.e. at script start)
+_SCRIPT_START=$(date +%s)
+_SECTION_START=0
+_SECTION_NAME=""
+
 section() {
-  # Visual section for user when verbose option is used
+  local now
+  now=$(date +%s)
+
+  # Print elapsed time for the section that just finished
+  if [[ -n "$_SECTION_NAME" && "$_SECTION_START" -gt 0 ]]; then
+    printf "    ↳ %ds\n" "$(( now - _SECTION_START ))"
+  fi
+
+  _SECTION_START=$now
+  _SECTION_NAME="$*"
   print_cue ""
   print_cue "=== $* ==="
+}
+
+print_total_time() {
+  local now elapsed
+  now=$(date +%s)
+  # Close the last open section
+  if [[ -n "$_SECTION_NAME" && "$_SECTION_START" -gt 0 ]]; then
+    printf "    ↳ %ds\n" "$(( now - _SECTION_START ))"
+    _SECTION_START=0
+  fi
+  elapsed=$(( now - _SCRIPT_START ))
+  printf "\nTotal: %dm%02ds\n" "$(( elapsed / 60 ))" "$(( elapsed % 60 ))"
 }
 
 die() {
