@@ -119,14 +119,8 @@ run_on_node_env() {
 
   printf "  %-15s | %-20s | " "$NODE" "$NAME"
 
-  # Transfert
   multipass transfer "$SRC" "$NODE:/tmp/$NAME"
-  multipass exec "$NODE" -- chmod +x "/tmp/$NAME"
 
-  # Correction ici : Ajout de </dev/null et s'assurer que VARS ne casse pas la ligne
-  # On utilise 'env' pour injecter proprement les variables
-  # multipass exec "$NODE" -- sudo env $VARS bash "/tmp/$NAME"
-  
   if multipass exec "$NODE" -- bash -c "sudo env $VARS bash /tmp/$NAME" </dev/null 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
     echo -e "\e[32m[OK]\e[0m"
   else
@@ -144,9 +138,7 @@ run_on_node() {
 
   printf "  %-15s | %-20s | " "$NODE" "$NAME"
 
-  # Transfert
   multipass transfer "$SRC" "$NODE:/tmp/$NAME"
-  multipass exec "$NODE" -- chmod +x "/tmp/$NAME"
 
   if multipass exec "$NODE" -- sudo bash "/tmp/$NAME" </dev/null 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
     echo -e "\e[32m[OK]\e[0m"
@@ -166,62 +158,96 @@ get_version_info() {
   local VERSION=$1
   local JSON_FILE="$SCRIPT_DIR/versions.json"
 
-  if [[ ! -f "$JSON_FILE" ]]; then
-      die "Fichier versions.json introuvable."
-  fi
+  [[ -f "$JSON_FILE" ]] || die "Fichier versions.json introuvable."
+  jq -e --arg v "$VERSION" 'has($v)' "$JSON_FILE" > /dev/null \
+    || die "Version '$VERSION' not found in versions.json"
 
-  # Informations about virtual layer
-  # Control-plane
-  local JSON_PATH=".\"$VERSION\".\"virtual-layer\".\"control-plane\""
-  CP_PREFIX=$(jq -r "$JSON_PATH.name" "$JSON_FILE")
-  CP_NUMBER=$(jq -r "$JSON_PATH.count" "$JSON_FILE")
-  CP_OPEN_PORTS=$(jq -r "$JSON_PATH.ports // []" "$JSON_FILE")
-  CP_OS_VERSION=$(jq -r "$JSON_PATH.\"os-version\"" "$JSON_FILE")
-  CP_CPUS=$(jq -r "$JSON_PATH.cpus" "$JSON_FILE")
-  CP_MEMORY=$(jq -r "$JSON_PATH.memory" "$JSON_FILE")
-  CP_DISK=$(jq -r "$JSON_PATH.disk" "$JSON_FILE")
-  CP_POD_CIDR=$(jq -r "$JSON_PATH.cidr" "$JSON_FILE")
+  # Parse entire version block in a single jq invocation
+  local assignments
+  assignments=$(jq -r --arg v "$VERSION" '
+    .[$v] as $ver |
+    ($ver["virtual-layer"]["control-plane"]) as $cp |
+    ($ver["virtual-layer"].worker) as $w |
+    ($ver.kubernetes) as $k8s |
+    ($ver.components["container-runtime"].containerd) as $ct |
+    ($ver.components.runc) as $runc |
+    ($ver.components["cni-plugin"]) as $cni |
+    ($ver.components["network-plugins"].calico) as $calico |
+    ($ver.components.helm) as $helm |
+    ($ver.components.harbor) as $harbor |
+    ($ver.components["kube-prometheus-stack"] // {}) as $prom |
+    ($ver.components.argocd // {}) as $argocd |
+    ($ver.components.istio // {}) as $istio |
+    ($ver.components["envoy-gateway"] // {}) as $envoy |
+    ($ver.tools) as $tools |
+    "BASE_IMAGE=\(($ver["virtual-layer"]["base_image"] // "") | @sh)",
+    "CP_PREFIX=\($cp.name | @sh)",
+    "CP_NUMBER=\($cp.count | @sh)",
+    "CP_OPEN_PORTS=\($cp.ports // [] | tojson | @sh)",
+    "CP_OS_VERSION=\($cp["os-version"] | @sh)",
+    "CP_CPUS=\($cp.cpus | @sh)",
+    "CP_MEMORY=\($cp.memory | @sh)",
+    "CP_DISK=\($cp.disk | @sh)",
+    "CP_POD_CIDR=\($cp.cidr | @sh)",
+    "W_PREFIX=\($w.name | @sh)",
+    "W_NUMBER=\($w.count | @sh)",
+    "W_OPEN_PORTS=\($w.ports // [] | tojson | @sh)",
+    "W_OS_VERSION=\(($w["os-version"] // $w.os_version) | @sh)",
+    "W_CPUS=\($w.cpus | @sh)",
+    "W_MEMORY=\($w.memory | @sh)",
+    "W_DISK=\($w.disk | @sh)",
+    "K8S_MINOR=\($k8s.minor | @sh)",
+    "K8S_PATCH=\($k8s.patch | @sh)",
+    "K8S_PKG_VERSION=\($k8s.pkg_version | @sh)",
+    "K8S_REPO=\($k8s.repo_url | @sh)",
+    "K8S_RELEASE_KEY=\($k8s["release-key"] | @sh)",
+    "CONTAINERD_VERSION=\($ct.version | @sh)",
+    "CONTAINERD_URL=\($ct.url | @sh)",
+    "CONTAINERD_SERVICE_URL=\($ct["service-url"] | @sh)",
+    "RUNC_VERSION=\($runc.version | @sh)",
+    "RUNC_URL=\($runc.url | @sh)",
+    "CNI_VERSION=\($cni.version | @sh)",
+    "CNI_URL=\($cni.url | @sh)",
+    "CALICO_VERSION=\($calico.version | tojson | @sh)",
+    "CALICO_CRD_URL=\($calico["crd-url"] | tojson | @sh)",
+    "CALICO_TIGERA_OPERATOR=\($calico["tigera-operator"] | tojson | @sh)",
+    "CALICO_OPEN_PORTS=\($calico.ports // [] | tojson | @sh)",
+    "HELM_VERSION=\($helm.version | @sh)",
+    "HELM_URL=\($helm.url | @sh)",
+    "HARBOR_CHART_VERSION=\($harbor.chart_version | @sh)",
+    "HARBOR_REPO_URL=\($harbor.repo_url | @sh)",
+    "HARBOR_REPO_NAME=\($harbor.repo_name | @sh)",
+    "HARBOR_CHART=\($harbor.chart | @sh)",
+    "HARBOR_NAMESPACE=\($harbor.namespace | @sh)",
+    "HARBOR_RELEASE=\($harbor.release | @sh)",
+    "TOOL_HELM=\($tools.helm | tostring | @sh)",
+    "TOOL_HARBOR=\($tools.harbor | tostring | @sh)",
+    "TOOL_PROMETHEUS=\($tools.prometheus | tostring | @sh)",
+    "TOOL_ARGOCD=\($tools.argocd | tostring | @sh)",
+    "TOOL_ISTIO=\($tools.istio | tostring | @sh)",
+    "TOOL_ENVOY=\($tools.envoy | tostring | @sh)",
+    "PROMETHEUS_CHART_VERSION=\($prom.chart_version // "" | @sh)",
+    "PROMETHEUS_REPO_URL=\($prom.repo_url // "" | @sh)",
+    "PROMETHEUS_REPO_NAME=\($prom.repo_name // "" | @sh)",
+    "PROMETHEUS_CHART=\($prom.chart // "" | @sh)",
+    "PROMETHEUS_NAMESPACE=\($prom.namespace // "" | @sh)",
+    "PROMETHEUS_RELEASE=\($prom.release // "" | @sh)",
+    "ARGOCD_CHART_VERSION=\($argocd.chart_version // "" | @sh)",
+    "ARGOCD_REPO_URL=\($argocd.repo_url // "" | @sh)",
+    "ARGOCD_REPO_NAME=\($argocd.repo_name // "" | @sh)",
+    "ARGOCD_CHART=\($argocd.chart // "" | @sh)",
+    "ARGOCD_NAMESPACE=\($argocd.namespace // "" | @sh)",
+    "ARGOCD_RELEASE=\($argocd.release // "" | @sh)",
+    "ISTIO_VERSION=\($istio.version // "" | @sh)",
+    "ISTIO_REPO_URL=\($istio.repo_url // "" | @sh)",
+    "ISTIO_REPO_NAME=\($istio.repo_name // "" | @sh)",
+    "ISTIO_NAMESPACE=\($istio.namespace // "" | @sh)",
+    "ENVOY_CHART_VERSION=\($envoy.chart_version // "" | @sh)",
+    "ENVOY_REPO_URL=\($envoy.repo_url // "" | @sh)",
+    "ENVOY_NAMESPACE=\($envoy.namespace // "" | @sh)",
+    "ENVOY_RELEASE=\($envoy.release // "" | @sh)"
+  ' "$JSON_FILE") || die "Failed to parse versions.json for version $VERSION"
 
-  # Worker
-  local JSON_PATH=".\"$VERSION\".\"virtual-layer\".worker"
-  W_PREFIX=$(jq -r "$JSON_PATH.name" "$JSON_FILE")
-  W_NUMBER=$(jq -r "$JSON_PATH.count" "$JSON_FILE")
-  W_OPEN_PORTS=$(jq -r "$JSON_PATH.ports // []" "$JSON_FILE")
-  W_OS_VERSION=$(jq -r "$JSON_PATH.\"os-version\"" "$JSON_FILE")
-  W_CPUS=$(jq -r "$JSON_PATH.cpus" "$JSON_FILE")
-  W_MEMORY=$(jq -r "$JSON_PATH.memory" "$JSON_FILE")
-  W_DISK=$(jq -r "$JSON_PATH.disk" "$JSON_FILE")
-
-  # Extraction des infos Kubernetes
-  local JSON_PATH=".\"$VERSION\".kubernetes"
-  K8S_MINOR=$(jq -r "$JSON_PATH.minor" "$JSON_FILE")
-  K8S_PATCH=$(jq -r "$JSON_PATH.patch" "$JSON_FILE")
-  K8S_PKG_VERSION=$(jq -r "$JSON_PATH.pkg_version" "$JSON_FILE")
-  K8S_REPO=$(jq -r "$JSON_PATH.repo_url" "$JSON_FILE")
-  K8S_RELEASE_KEY=$(jq -r "$JSON_PATH.\"release-key\"" "$JSON_FILE")
-
-  # Extraction des composants
-  # container-runtime
-  local JSON_PATH=".\"$VERSION\".components.\"container-runtime\".containerd"
-  CONTAINERD_VERSION=$(jq -r "$JSON_PATH.version" "$JSON_FILE")
-  CONTAINERD_URL=$(jq -r "$JSON_PATH.url" "$JSON_FILE")
-  CONTAINERD_SERVICE_URL=$(jq -r "$JSON_PATH.\"service-url\"" "$JSON_FILE")
-  
-  # runc
-  local JSON_PATH=".\"$VERSION\".components.runc"
-  RUNC_VERSION=$(jq -r "$JSON_PATH.version" "$JSON_FILE")
-  RUNC_URL=$(jq -r "$JSON_PATH.url" "$JSON_FILE")
-
-  # cni-plugin
-  local JSON_PATH=".\"$VERSION\".components.\"cni-plugin\""
-  CNI_VERSION=$(jq -r "$JSON_PATH.version" "$JSON_FILE")
-  CNI_URL=$(jq -r "$JSON_PATH.url" "$JSON_FILE")
-  
-  # network-plugin
-  local JSON_PATH=".\"$VERSION\".components.\"network-plugins\".calico"
+  eval "$assignments"
   CNI="calico"
-  CALICO_VERSION=$(jq -c "$JSON_PATH.version" "$JSON_FILE")
-  CALICO_CRD_URL=$(jq -c "$JSON_PATH.\"crd-url\"" "$JSON_FILE")
-  CALICO_TIGERA_OPERATOR=$(jq -c "$JSON_PATH.\"tigera-operator\"" "$JSON_FILE")
-  CALICO_OPEN_PORTS=$(jq -c "$JSON_PATH.ports // []" "$JSON_FILE")
 }

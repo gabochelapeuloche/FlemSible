@@ -1,11 +1,12 @@
 {
-  "1.35": {
+  "1.35_base": {
     "required_operations": {
       "vms": [],
       "control-plane": [],
       "worker": []
     },
     "virtual-layer": {
+      "base_image": "/home/leg/Documents/Projets/k8s-setup/images/base-node-1.35_base.img",
       "control-plane": {
         "name": "control-plane",
         "count": 1,
@@ -15,7 +16,7 @@
           "2379:2380/tcp",
           "10249:10260/tcp"
         ],
-        "os-version":"noble",
+        "os-version": "noble",
         "cpus": 2,
         "memory": "2G",
         "disk": "15G",
@@ -31,10 +32,10 @@
           "30000:32767/tcp",
           "30000:32767/udp"
         ],
-        "os_version":"noble",
+        "os_version": "noble",
         "cpus": 2,
-        "memory":"2G",
-        "disk":"15G"
+        "memory": "2G",
+        "disk": "15G"
       }
     },
     "kubernetes": {
@@ -46,7 +47,7 @@
     },
     "components": {
       "container-runtime": {
-        "containerd" : {
+        "containerd": {
           "version": "2.2.1",
           "url": "https://github.com/containerd/containerd/releases/download/v2.2.1/containerd-2.2.1-linux-amd64.tar.gz",
           "service-url": "https://raw.githubusercontent.com/containerd/containerd/main/containerd.service"
@@ -58,11 +59,11 @@
       },
       "cni-plugin": {
         "version": "1.9.0",
-        "url": "https://github.com/containernetworking/plugins/releases/download/v1.9.0/cni-plugins-linux-amd64-v1.9.0.tgz" 
+        "url": "https://github.com/containernetworking/plugins/releases/download/v1.9.0/cni-plugins-linux-amd64-v1.9.0.tgz"
       },
       "network-plugins": {
         "calico": {
-          "version":"v3.28.0",
+          "version": "v3.28.0",
           "ports": [
             "179/tcp",
             "5473/tcp",
@@ -73,14 +74,55 @@
           "tigera-operator": "https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/tigera-operator.yaml",
           "crd-url": "https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/custom-resources.yaml"
         }
-
+      },
+      "helm": {
+        "version": "3.17.1",
+        "url": "https://get.helm.sh/helm-v3.17.1-linux-amd64.tar.gz"
+      },
+      "harbor": {
+        "chart_version": "1.15.1",
+        "repo_url": "https://helm.goharbor.io",
+        "repo_name": "harbor",
+        "chart": "harbor/harbor",
+        "namespace": "harbor",
+        "release": "harbor"
+      },
+      "kube-prometheus-stack": {
+        "chart_version": "67.9.0",
+        "repo_url": "https://prometheus-community.github.io/helm-charts",
+        "repo_name": "prometheus-community",
+        "chart": "prometheus-community/kube-prometheus-stack",
+        "namespace": "monitoring",
+        "release": "prometheus"
+      },
+      "argocd": {
+        "chart_version": "7.7.6",
+        "repo_url": "https://argoproj.github.io/argo-helm",
+        "repo_name": "argo",
+        "chart": "argo/argo-cd",
+        "namespace": "argocd",
+        "release": "argocd"
+      },
+      "istio": {
+        "version": "1.24.2",
+        "repo_url": "https://istio-release.storage.googleapis.com/charts",
+        "repo_name": "istio",
+        "namespace": "istio-system"
+      },
+      "envoy-gateway": {
+        "chart_version": "1.2.1",
+        "repo_url": "oci://docker.io/envoyproxy/gateway-helm",
+        "namespace": "envoy-gateway-system",
+        "release": "eg"
       }
     },
     "tools": {
+      "helm": true,
       "prometheus": false,
       "istio": false,
       "argocd": false,
-      "envoy": false
+      "envoy": false,
+      "harbor": true
     }
   }
 }

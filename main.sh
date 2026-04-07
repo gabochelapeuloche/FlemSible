@@ -12,6 +12,11 @@ source "$SCRIPT_DIR/lib/utils.sh"
 source "$SCRIPT_DIR/lib/virtual-infrastructure/vm-provisionning.sh"
 source "$SCRIPT_DIR/lib/kube-bootstrap/node-bootstrap.sh"
 source "$SCRIPT_DIR/lib/kube-bootstrap/injections/host-config.sh"
+source "$SCRIPT_DIR/lib/kube-services/harbor.sh"
+source "$SCRIPT_DIR/lib/kube-services/prometheus.sh"
+source "$SCRIPT_DIR/lib/kube-services/argocd.sh"
+source "$SCRIPT_DIR/lib/kube-services/istio.sh"
+source "$SCRIPT_DIR/lib/kube-services/envoy.sh"
 require_cmd multipass
 
 LOG_SESSION_DIR="$SCRIPT_DIR/logs/run_$(date +%Y%m%d_%H%M%S)"
@@ -20,12 +25,12 @@ export LOG_SESSION_DIR
 
 # Setup
 user_inputs "$@"
-get_version_info "${K8S_VERSION:-1.35}"
+get_version_info "${K8S_VERSION:-1.35_base}"
 validate_config
 
 # Virtual layer creation
 section "VMs Spin Up"
-create_vms && sleep 1
+create_vms
 
 # Provisioning (Parallelisme on each nodes)
 section "🛠 Preparing Nodes"
@@ -33,7 +38,6 @@ for NODE in "${VMS[@]}"; do
   prepare_node "$NODE" &
 done
 wait
-sleep 1
 
 # K8s Orchestration
 section "☸️  Initializing Cluster"
@@ -42,7 +46,10 @@ export_kubeconfig_to_host
 
 # Joining workers
 section "🤝 Joining Workers"
-join_workers && sleep 1
+join_workers
+
+# Helm CLI (required before any Helm-based service)
+[[ "$TOOL_HELM" == "true" ]] && { section "⎈  Installing Helm"; install_helm; }
 
 # Calico bootstraping
 section "🌐 Installing Network Plugin"
@@ -54,3 +61,15 @@ until kubectl get nodes | grep -q "Ready"; do
 done
 section "Cluster ready 🎉"
 kubectl get nodes
+
+# Optional services
+# Istio first — mesh infrastructure must be up before services that may use sidecars
+[[ "$TOOL_ISTIO" == "true" ]] && { section "🕸️  Installing Istio"; install_istio; }
+
+# Remaining services are independent — install in parallel
+section "🛠 Installing services"
+[[ "$TOOL_HARBOR" == "true" ]]     && install_harbor &
+[[ "$TOOL_PROMETHEUS" == "true" ]] && install_prometheus &
+[[ "$TOOL_ARGOCD" == "true" ]]     && install_argocd &
+[[ "$TOOL_ENVOY" == "true" ]]      && install_envoy &
+wait
