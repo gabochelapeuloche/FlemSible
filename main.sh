@@ -5,8 +5,20 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Automatic cleaning
-trap 'echo "An error occurred. Check logs."; exit 1' ERR
+VMS=()
+
+cleanup() {
+  [[ ${#VMS[@]} -eq 0 ]] && return
+  echo ""
+  echo "❌ Error — purging ${#VMS[@]} VM(s): ${VMS[*]}"
+  for VM in "${VMS[@]}"; do
+    multipass delete "$VM" --purge 2>/dev/null \
+      && echo "  deleted $VM" \
+      || echo "  $VM not found, skipping"
+  done
+}
+
+trap 'echo "An error occurred. Check logs."; cleanup; exit 1' ERR
 
 source "$SCRIPT_DIR/lib/utils.sh"
 source "$SCRIPT_DIR/lib/virtual-infrastructure/vm-provisionning.sh"
