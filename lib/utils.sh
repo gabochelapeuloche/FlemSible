@@ -107,7 +107,7 @@ usage() {
 Usage: $0 [options]
 
 Options:
-  --version KEY   Version profile key in versions.json (default: 1.35_base)
+  --profile KEY   Profile key in versions.json (default: 1.35_base)
   --cp-number N   Number of control-plane nodes
   --w-number N    Number of worker nodes
   --cpus N        vCPUs per VM
@@ -116,6 +116,7 @@ Options:
   --network NAME  Multipass network name
   --verbose       Enable verbose output
   --dry-run       Print what would be executed without running anything
+  --clean         Purge any existing cluster VMs before starting
   -h, --help      Show this help
 EOF
 }
@@ -130,8 +131,8 @@ user_inputs() {
         usage
         exit 0
         ;;
-      --version)
-        K8S_VERSION="$2"
+      --profile)
+        PROFILE="$2"
         shift 2
         ;;
       --cp-number)
@@ -169,6 +170,10 @@ user_inputs() {
         ;;
       --dry-run)
         export DRY_RUN=true
+        shift
+        ;;
+      --clean)
+        export CLEAN=true
         shift
         ;;
       *)

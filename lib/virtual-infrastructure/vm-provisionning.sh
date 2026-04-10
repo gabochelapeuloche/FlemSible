@@ -32,26 +32,23 @@ create_vms() {
     W_IMAGE="$W_OS_VERSION"
   fi
 
+  _launch_vm() {
+    local NAME="$1" IMAGE="$2" CPUS="$3" MEMORY="$4" DISK="$5"
+    VMS+=("$NAME")
+    if [[ "${DRY_RUN:-false}" != "true" ]] && multipass info "$NAME" &>/dev/null; then
+      printf "  %-20s \e[33m[reusing existing VM]\e[0m\n" "$NAME"
+    else
+      drun multipass launch "$IMAGE" \
+        --name "$NAME" --cpus "$CPUS" --memory "$MEMORY" --disk "$DISK"
+    fi
+  }
+
   for ((i=1; i<=CP_NUMBER; i++)); do
-    VMS+=("$CP_PREFIX-$i")
-    [[ "${DRY_RUN:-false}" != "true" ]] \
-      && multipass info "$CP_PREFIX-$i" &>/dev/null && die "La VM $CP_PREFIX-$i existe déjà"
-    drun multipass launch "$CP_IMAGE" \
-      --name "$CP_PREFIX-$i" \
-      --cpus "$CP_CPUS" \
-      --memory "$CP_MEMORY" \
-      --disk "$CP_DISK"
+    _launch_vm "$CP_PREFIX-$i" "$CP_IMAGE" "$CP_CPUS" "$CP_MEMORY" "$CP_DISK"
   done
 
   for ((i=1; i<=W_NUMBER; i++)); do
-    VMS+=("$W_PREFIX-$i")
-    [[ "${DRY_RUN:-false}" != "true" ]] \
-      && multipass info "$W_PREFIX-$i" &>/dev/null && die "La VM $W_PREFIX-$i existe déjà"
-    drun multipass launch "$W_IMAGE" \
-      --name "$W_PREFIX-$i" \
-      --cpus "$W_CPUS" \
-      --memory "$W_MEMORY" \
-      --disk "$W_DISK"
+    _launch_vm "$W_PREFIX-$i" "$W_IMAGE" "$W_CPUS" "$W_MEMORY" "$W_DISK"
   done
 
   # Configuration is role-specific but independent per VM — run in parallel

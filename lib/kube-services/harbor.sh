@@ -8,6 +8,7 @@
 #
 # Sourced by: main.sh
 # Globals consumed: CP_PREFIX, HELM_*, HARBOR_*, SCRIPT_DIR
+# Globals consumed: CP_PREFIX, HELM_*, HARBOR_*, VMS, SCRIPT_DIR
 # =============================================================================
 
 # install_helm
@@ -46,4 +47,26 @@ install_harbor() {
      NAMESPACE=$HARBOR_NAMESPACE \
      RELEASE=$HARBOR_RELEASE \
      EXTERNAL_URL=http://$CP_IP:30002"
+}
+
+# install_harbor_mirror
+# Configure containerd on every node to route docker.io pulls through Harbor.
+# Falls back to Docker Hub when Harbor is unreachable or image is not cached.
+# Must be called after install_harbor (Harbor must be up before mirroring).
+# Globals: CP_PREFIX (r), VMS (r), SCRIPT_DIR (r)
+install_harbor_mirror() {
+  local CP_IP
+  if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    CP_IP="<vm-ip>"
+  else
+    CP_IP=$(multipass info "${CP_PREFIX}-1" | awk '/IPv4/ {print $2; exit}')
+  fi
+
+  print_cue "Configuring Harbor mirror on all nodes"
+  for NODE in "${VMS[@]}"; do
+    run_on_node_env "$NODE" \
+      "$SCRIPT_DIR/lib/kube-services/injections/configure-harbor-mirror.sh" \
+      "HARBOR_IP=$CP_IP HARBOR_PORT=30002" &
+  done
+  wait
 }
