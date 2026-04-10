@@ -7,7 +7,7 @@
 # don't exist are skipped without error.
 #
 # Usage:
-#   bash tools/teardown.sh [--version <profile>]
+#   bash tools/teardown.sh [--profile <key>]
 # =============================================================================
 set -Eeuo pipefail
 
@@ -16,11 +16,11 @@ source "$SCRIPT_DIR/../lib/utils.sh"
 require_cmd multipass
 
 user_inputs "$@"
-get_version_info "${K8S_VERSION:-1.35_base}"
+get_version_info "${PROFILE:-1.35_base}"
 
 KUBECONFIG_FILE="$SCRIPT_DIR/../kubeconfig/k8s-cluster.conf"
 
-echo "Profile: ${K8S_VERSION:-1.35_base}"
+echo "Profile: ${PROFILE:-1.35_base}"
 echo "Deleting ${CP_NUMBER} control-plane VM(s) [${CP_PREFIX}] and ${W_NUMBER} worker VM(s) [${W_PREFIX}]"
 echo ""
 

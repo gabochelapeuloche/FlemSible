@@ -6,7 +6,7 @@
 # Reads the profile from versions.json to know which services to check.
 #
 # Usage:
-#   bash tools/check-cluster.sh [--version <profile>]
+#   bash tools/check-cluster.sh [--profile <key>]
 # =============================================================================
 set -Eeuo pipefail
 
@@ -15,7 +15,7 @@ source "$SCRIPT_DIR/../lib/utils.sh"
 require_cmd kubectl
 
 user_inputs "$@"
-get_version_info "${K8S_VERSION:-1.35_base}"
+get_version_info "${PROFILE:-1.35_base}"
 
 KUBECONFIG="${KUBECONFIG:-$SCRIPT_DIR/../kubeconfig/k8s-cluster.conf}"
 export KUBECONFIG

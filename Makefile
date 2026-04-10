@@ -4,19 +4,19 @@ build: ## Build pre-baked base image for PROFILE
 	bash tools/build-base-image.sh $(PROFILE)
 
 deploy: ## Deploy a cluster (ARGS="--cp-number 1 --w-number 1" to override)
-	bash main.sh --version $(PROFILE) $(ARGS)
+	bash main.sh --profile $(PROFILE) $(ARGS)
 
 teardown: ## Delete all cluster VMs for PROFILE
-	bash tools/teardown.sh --version $(PROFILE)
+	bash tools/teardown.sh --profile $(PROFILE)
 
 check: ## Run smoke test against the running cluster
-	bash tools/check-cluster.sh --version $(PROFILE)
+	bash tools/check-cluster.sh --profile $(PROFILE)
 
 test: ## Run the unit test suite
 	bash tests/run_tests.sh
 
 dry-run: ## Preview what deploy would do without running anything
-	bash main.sh --version $(PROFILE) --dry-run $(ARGS)
+	bash main.sh --profile $(PROFILE) --dry-run $(ARGS)
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
