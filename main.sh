@@ -15,7 +15,7 @@
 # the VMS array to avoid leaving orphaned Multipass instances.
 #
 # Usage:
-#   ./main.sh [K8S_VERSION_KEY] [--workers N] [--cpus N] [--memory Ng]
+#   ./main.sh [--profile KEY] [--workers N] [--cpus N] [--memory Ng]
 # =============================================================================
 set -Eeuo pipefail
 
@@ -78,8 +78,28 @@ calico_ready() {
 
 # --- Setup ---
 user_inputs "$@"
-get_version_info "${K8S_VERSION:-1.35_base}"
+get_version_info "${PROFILE:-1.35_base}"
 validate_config
+
+# --- Optional pre-clean ---
+# Purge existing VMs so the run starts from a blank slate.
+# Without --clean, existing VMs are reused (idempotent resume).
+if [[ "${CLEAN:-false}" == "true" ]]; then
+  section "Cleaning existing cluster"
+  _clean_vm() {
+    local VM="$1"
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+      printf "  \e[33m[DRY-RUN]\e[0m would delete %s\n" "$VM"
+    elif multipass info "$VM" &>/dev/null; then
+      multipass delete "$VM" --purge \
+        && printf "  %-20s \e[32m[deleted]\e[0m\n" "$VM"
+    else
+      printf "  %-20s \e[33m[not found, skipping]\e[0m\n" "$VM"
+    fi
+  }
+  for ((i=1; i<=CP_NUMBER; i++)); do _clean_vm "${CP_PREFIX}-$i"; done
+  for ((i=1; i<=W_NUMBER; i++)); do _clean_vm "${W_PREFIX}-$i"; done
+fi
 
 # --- Virtual layer ---
 section "VMs Spin Up"
@@ -137,6 +157,10 @@ section "Installing services"
 [[ "$TOOL_ARGOCD" == "true" ]]     && install_argocd &
 [[ "$TOOL_ENVOY" == "true" ]]      && install_envoy &
 wait
+
+# Harbor mirror: configure containerd on every node after Harbor is up.
+# docker.io pulls route through Harbor; Docker Hub is the automatic fallback.
+[[ "$TOOL_HARBOR" == "true" ]] && { section "Configuring Harbor mirror"; install_harbor_mirror; }
 
 print_total_time
 echo ""
