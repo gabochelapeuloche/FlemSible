@@ -31,6 +31,19 @@ is_installed() {
 # Apply the Tigera operator manifest, wait for its deployment to roll out,
 # then apply the Calico custom resources.
 install() {
+  # Pre-pull images so pods start immediately after kubectl apply instead of
+  # waiting for the registry. Best-effort: a failure here does not abort the
+  # install — Kubernetes will still pull at scheduling time.
+  echo "[$COMPONENT] pre-pulling images (v${VERSION})"
+  for IMAGE in \
+    "quay.io/tigera/operator:${VERSION}" \
+    "docker.io/calico/node:${VERSION}" \
+    "docker.io/calico/kube-controllers:${VERSION}" \
+    "docker.io/calico/cni:${VERSION}"; do
+    sudo ctr images pull "$IMAGE" 2>/dev/null || echo "  [warn] pre-pull skipped: $IMAGE" &
+  done
+  wait
+
   echo "[$COMPONENT] installing Tigera Operator"
 
   kubectl create -f "$OPERATOR_URL" || true
