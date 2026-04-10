@@ -17,6 +17,12 @@ REPO_NAME="${REPO_NAME:-}"
 CHART="${CHART:-}"
 NAMESPACE="${NAMESPACE:-}"
 RELEASE="${RELEASE:-}"
+ALERTMANAGER_MEM_REQUEST="${ALERTMANAGER_MEM_REQUEST:-64Mi}"
+ALERTMANAGER_MEM_LIMIT="${ALERTMANAGER_MEM_LIMIT:-128Mi}"
+PROMETHEUS_MEM_REQUEST="${PROMETHEUS_MEM_REQUEST:-256Mi}"
+PROMETHEUS_MEM_LIMIT="${PROMETHEUS_MEM_LIMIT:-768Mi}"
+GRAFANA_MEM_REQUEST="${GRAFANA_MEM_REQUEST:-64Mi}"
+GRAFANA_MEM_LIMIT="${GRAFANA_MEM_LIMIT:-128Mi}"
 COMPONENT="kube-prometheus-stack"
 
 export KUBECONFIG=/etc/kubernetes/admin.conf
@@ -40,7 +46,13 @@ install() {
     --create-namespace \
     --version "$CHART_VERSION" \
     --wait \
-    --timeout 10m
+    --timeout 10m \
+    --set alertmanager.alertmanagerSpec.resources.requests.memory="$ALERTMANAGER_MEM_REQUEST" \
+    --set alertmanager.alertmanagerSpec.resources.limits.memory="$ALERTMANAGER_MEM_LIMIT" \
+    --set prometheus.prometheusSpec.resources.requests.memory="$PROMETHEUS_MEM_REQUEST" \
+    --set prometheus.prometheusSpec.resources.limits.memory="$PROMETHEUS_MEM_LIMIT" \
+    --set grafana.resources.requests.memory="$GRAFANA_MEM_REQUEST" \
+    --set grafana.resources.limits.memory="$GRAFANA_MEM_LIMIT"
 }
 
 main() {

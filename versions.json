@@ -1,5 +1,6 @@
 {
   "1.35_base": {
+    "cluster-name": "k8s",
     "virtual-layer": {
       "base_image": "/home/leg/Documents/Projets/k8s-setup/images/base-node-1.35_base.img",
       "control-plane": {
@@ -13,13 +14,13 @@
         ],
         "os-version": "noble",
         "cpus": 2,
-        "memory": "2G",
+        "memory": "3G",
         "disk": "15G",
         "cidr": "192.168.0.0/16"
       },
       "worker": {
         "name": "worker",
-        "count": 2,
+        "count": 1,
         "ports": [
           "22/tcp",
           "10250/tcp",
@@ -29,7 +30,7 @@
         ],
         "os-version": "noble",
         "cpus": 2,
-        "memory": "2G",
+        "memory": "3G",
         "disk": "15G"
       }
     },
@@ -88,7 +89,12 @@
         "repo_name": "prometheus-community",
         "chart": "prometheus-community/kube-prometheus-stack",
         "namespace": "monitoring",
-        "release": "prometheus"
+        "release": "prometheus",
+        "resources": {
+          "alertmanager": { "request": "64Mi",  "limit": "128Mi" },
+          "prometheus":   { "request": "256Mi", "limit": "768Mi" },
+          "grafana":      { "request": "64Mi",  "limit": "128Mi" }
+        }
       },
       "argocd": {
         "chart_version": "7.7.6",
@@ -113,10 +119,10 @@
     },
     "tools": {
       "helm": true,
-      "prometheus": false,
-      "istio": false,
-      "argocd": false,
-      "envoy": false,
+      "prometheus": true,
+      "istio": true,
+      "argocd": true,
+      "envoy": true,
       "harbor": true
     }
   }
