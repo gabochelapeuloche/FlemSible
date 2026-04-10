@@ -55,11 +55,21 @@ When `virtual-layer.base_image` is set in `versions.json`, `prepare_node` become
 
 ## Quick start
 
+The `Makefile` is the primary entry point (`make help` lists all targets):
+
+```bash
+make deploy                              # deploy cluster (default profile)
+make deploy PROFILE=1.35_base ARGS="--cp-number 1 --w-number 1"
+make teardown                            # delete all cluster VMs + kubeconfig
+make check                               # run smoke test against running cluster
+make dry-run                             # preview deploy without running anything
+```
+
 ### First run (no base image)
 
 ```bash
-chmod +x main.sh
-./main.sh
+make deploy
+# or directly: ./main.sh
 ```
 
 This provisions VMs from a standard Ubuntu image and installs the full stack. Slower, but requires no prior setup.
@@ -68,13 +78,14 @@ This provisions VMs from a standard Ubuntu image and installs the full stack. Sl
 
 ```bash
 # Build once — takes ~10 minutes (downloads packages, pre-pulls images)
-tools/build-base-image.sh 1.35_base
+make build
+# or directly: bash tools/build-base-image.sh 1.35_base
 
 # Spin up clusters as many times as you want — much faster
-./main.sh
+make deploy
 ```
 
-The build script registers the image path in `versions.json` automatically. Subsequent `main.sh` runs use it without any additional steps.
+The build script registers the image path in `versions.json` automatically. Subsequent runs use it without any additional steps.
 
 **Rebuild the base image when you change:**
 - `containerd`, `runc`, or `cni-plugin` versions in `versions.json`
@@ -82,7 +93,7 @@ The build script registers the image path in `versions.json` automatically. Subs
 
 ```bash
 rm images/base-node-1.35_base.img
-tools/build-base-image.sh 1.35_base
+make build
 ```
 
 ---
@@ -101,6 +112,8 @@ tools/build-base-image.sh 1.35_base
 | `--cpus N` | from `versions.json` | vCPUs per VM |
 | `--memory XG` | from `versions.json` | RAM per VM |
 | `--disk XG` | from `versions.json` | Disk per VM |
+| `--clean` | | Purge any existing cluster VMs before starting |
+| `--dry-run` | | Print every step without executing anything |
 | `-h, --help` | | Print usage |
 
 After completion, `kubeconfig/k8s-cluster.conf` is written and `KUBECONFIG` is exported for the current shell.
@@ -114,6 +127,8 @@ All configuration lives in `versions.json`, keyed by a version string (e.g. `"1.
 ```jsonc
 {
   "1.35_base": {
+
+    "cluster-name": "k8s",   // VM name prefix — VMs become k8s-control-plane-1, k8s-worker-1, …
 
     "virtual-layer": {
       "base_image": "/path/to/images/base-node-1.35_base.img",  // null = no base image
@@ -146,7 +161,14 @@ All configuration lives in `versions.json`, keyed by a version string (e.g. `"1.
       "network-plugins":   { "calico": { "version": "...", ... } },
       "helm":              { "version": "...", "url": "..." },
       "harbor":            { "chart_version": "...", "repo_url": "...", ... },
-      "kube-prometheus-stack": { "chart_version": "...", ... },
+      "kube-prometheus-stack": {
+        "chart_version": "...",
+        "resources": {           // memory tuning for small VMs
+          "alertmanager": { "request": "64Mi",  "limit": "128Mi" },
+          "prometheus":   { "request": "256Mi", "limit": "768Mi" },
+          "grafana":      { "request": "64Mi",  "limit": "128Mi" }
+        }
+      },
       "argocd":            { "chart_version": "...", ... },
       "istio":             { "version": "...", ... },
       "envoy-gateway":     { "chart_version": "...", ... }
@@ -188,10 +210,11 @@ Services are enabled by setting their flag to `true` in `versions.json` under `t
 
 URL: `http://<control-plane-IP>:30002` — default credentials: `admin` / `Harbor12345` — change immediately.
 
-To use as a pull-through cache:
+After Harbor is up, `install_harbor_mirror` automatically configures `/etc/containerd/certs.d/docker.io/hosts.toml` on every node to route `docker.io` pulls through Harbor, with Docker Hub as fallback when Harbor is unreachable or the image is not cached.
+
+To set up a proxy cache project in Harbor:
 1. **Administration → Registries → New** → Docker Hub endpoint
 2. **Projects → New** → enable Proxy Cache, select the endpoint
-3. Patch `/etc/containerd/config.toml` on each node to mirror `docker.io` via the Harbor URL
 
 ---
 
@@ -270,7 +293,9 @@ Output format:
 ├── versions.json                        # Single source of truth for all versions, URLs, flags
 │
 ├── tools/
-│   └── build-base-image.sh              # Builds a pre-baked VM image (run once, reuse forever)
+│   ├── build-base-image.sh              # Builds a pre-baked VM image (run once, reuse forever)
+│   ├── teardown.sh                      # Deletes all cluster VMs by prefix + removes kubeconfig
+│   └── check-cluster.sh                 # Smoke test: API, nodes, system pods, enabled services
 │
 ├── images/                              # Output directory for built base images
 │   └── base-node-1.35_base.img          # Generated by build-base-image.sh
@@ -310,6 +335,7 @@ Output format:
 │       ├── envoy.sh                     # install_envoy
 │       └── injections/                  # Run on control-plane via run_on_node_env
 │           ├── harbor.sh
+│           ├── configure-harbor-mirror.sh  # Patches hosts.toml on every node post-install
 │           ├── prometheus.sh
 │           ├── argocd.sh
 │           ├── istio.sh                 # Two sequential helm installs (base then istiod)
@@ -325,8 +351,12 @@ Output format:
 │
 └── logs/                                # Per-run session logs
     ├── run_20260408_120000/
-    │   ├── control-plane-1.log
-    │   └── worker-1.log
+    │   ├── k8s-control-plane-1.log      # Node-level logs (kubeadm init, joins, …)
+    │   ├── k8s-worker-1.log
+    │   ├── harbor.log                   # Per-service logs (parallel installs — no interleaving)
+    │   ├── prometheus.log
+    │   ├── harbor-mirror-k8s-worker-1.log
+    │   └── …
     └── build_20260408_110000/           # Base image build logs
 ```
 
@@ -343,9 +373,9 @@ run_on_node_env "$NODE" script.sh  →    multipass transfer → /tmp/script.sh
   "VAR1=val VAR2=val"               →    sudo env VAR1=val VAR2=val bash /tmp/script.sh
 ```
 
-- `run_on_node_env` — transfers script + injects env vars at execution time
-- `run_on_node` — transfers and runs without env vars
-- All output is logged to `$LOG_SESSION_DIR/<node>.log`; console shows `[OK]` / `[FAILED]` only
+- `run_on_node_env` — transfers script + injects env vars at execution time; optional 4th arg overrides the log file path
+- `run_on_node` — transfers and runs without env vars; optional 3rd arg overrides the log file path
+- Default log: `$LOG_SESSION_DIR/<node>.log`; service installs pass a per-service file (e.g. `harbor.log`) to avoid interleaving in parallel runs
 
 Every injection script is self-contained and idempotent: it checks `is_installed()` or `is_applied()` before doing any work. This means re-running is safe, and when a base image is used, the checks pass immediately and the script exits without side effects.
 
