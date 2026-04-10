@@ -95,7 +95,7 @@ tools/build-base-image.sh 1.35_base
 
 | Flag | Default | Description |
 |---|---|---|
-| `--version KEY` | `1.35_base` | Version key to look up in `versions.json` |
+| `--profile KEY` | `1.35_base` | Profile key to look up in `versions.json` |
 | `--cp-number N` | from `versions.json` | Number of control-plane nodes |
 | `--w-number N` | from `versions.json` | Number of worker nodes |
 | `--cpus N` | from `versions.json` | vCPUs per VM |

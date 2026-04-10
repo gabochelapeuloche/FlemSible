@@ -23,10 +23,10 @@ make dry-run                       # preview deploy without running anything
 Direct script usage:
 
 ```bash
-./main.sh [--version <profile>] [--cp-number N] [--w-number N] [--memory Xg] [--dry-run]
+./main.sh [--profile <key>] [--cp-number N] [--w-number N] [--memory Xg] [--dry-run]
 bash tools/build-base-image.sh <profile>
-bash tools/teardown.sh [--version <profile>]
-bash tools/check-cluster.sh [--version <profile>]
+bash tools/teardown.sh [--profile <key>]
+bash tools/check-cluster.sh [--profile <key>]
 bash tests/run_tests.sh
 bash tests/script-config/test_utils.sh   # run a single suite
 ```
