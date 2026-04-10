@@ -45,8 +45,9 @@ install() {
     --set expose.nodePort.ports.http.nodePort=30002 \
     --set expose.tls.enabled=false \
     --set externalURL="$EXTERNAL_URL" \
+    --set persistence.enabled=false \
     --wait \
-    --timeout 20m
+    --timeout 10m
 }
 
 main() {
