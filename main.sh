@@ -110,12 +110,21 @@ install_calico_operator
 # --- Cluster readiness gate ---
 # All nodes must be Ready and all Calico pods Running before installing services.
 # Services that start too early (before CNI is functional) will fail to schedule.
-section "Waiting for cluster"
-until all_nodes_ready;  do echo -n "." && sleep 3; done; echo
-until calico_ready;     do echo -n "." && sleep 3; done; echo
+if [[ "${DRY_RUN:-false}" != "true" ]]; then
+  section "Waiting for cluster"
+  until all_nodes_ready;  do echo -n "." && sleep 3; done; echo
+  until calico_ready;     do echo -n "." && sleep 3; done; echo
 
-section "Cluster ready"
-kubectl get nodes
+  section "Cluster ready"
+  kubectl get nodes
+
+  # Label worker nodes — kubeadm leaves the role column blank by default
+  for NODE in "${VMS[@]}"; do
+    [[ "$NODE" == "${CP_PREFIX}-"* ]] && continue
+    kubectl label node "$NODE" node-role.kubernetes.io/worker=worker --overwrite \
+      && echo "  labeled $NODE as worker"
+  done
+fi
 
 # --- Optional services ---
 # Istio first: mesh infrastructure must be up before sidecar-injected services
