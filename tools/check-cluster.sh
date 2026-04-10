@@ -11,13 +11,13 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "$SCRIPT_DIR/../lib/utils.sh"
+source "$SCRIPT_DIR/lib/utils.sh"
 require_cmd kubectl
 
 user_inputs "$@"
 get_version_info "${PROFILE:-1.35_base}"
 
-KUBECONFIG="${KUBECONFIG:-$SCRIPT_DIR/../kubeconfig/k8s-cluster.conf}"
+KUBECONFIG="${KUBECONFIG:-$SCRIPT_DIR/kubeconfig/k8s-cluster.conf}"
 export KUBECONFIG
 
 [[ -f "$KUBECONFIG" ]] || die "Kubeconfig not found: $KUBECONFIG — run main.sh first"
