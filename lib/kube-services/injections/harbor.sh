@@ -46,7 +46,7 @@ install() {
     --set expose.tls.enabled=false \
     --set externalURL="$EXTERNAL_URL" \
     --wait \
-    --timeout 10m
+    --timeout 20m
 }
 
 main() {
