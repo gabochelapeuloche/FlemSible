@@ -16,7 +16,7 @@
 #   Images:   pause, kube-proxy (shared node images — CP-specific pulled later)
 #
 # Usage:
-#   tools/build-base-image.sh [K8S_VERSION_KEY]   (default: 1.35_base)
+#   tools/build-base-image.sh [PROFILE]   (default: 1.35_base)
 #
 # After building, versions.json is updated with the image path automatically.
 # =============================================================================
@@ -28,7 +28,7 @@ source "$SCRIPT_DIR/lib/utils.sh"
 require_cmd multipass
 require_cmd jq
 
-K8S_VERSION="${1:-1.35_base}"
+PROFILE="${1:-1.35_base}"
 BUILDER_NAME="base-image-builder"
 OUTPUT_DIR="$SCRIPT_DIR/images"
 
@@ -57,9 +57,9 @@ export LOG_SESSION_DIR
 LOG_SESSION_DIR="$SCRIPT_DIR/logs/build_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$LOG_SESSION_DIR" "$OUTPUT_DIR"
 
-get_version_info "$K8S_VERSION"
+get_version_info "$PROFILE"
 
-OUTPUT_IMAGE="$OUTPUT_DIR/base-node-${K8S_VERSION}.img"
+OUTPUT_IMAGE="$OUTPUT_DIR/base-node-${PROFILE}.img"
 
 [[ ! -f "$OUTPUT_IMAGE" ]] || die "Image already exists: $OUTPUT_IMAGE — delete it first to rebuild."
 
@@ -149,7 +149,7 @@ multipass delete "$BUILDER_NAME" --purge
 trap - ERR
 
 section "Registering image in versions.json"
-jq --arg v "$K8S_VERSION" --arg path "$OUTPUT_IMAGE" \
+jq --arg v "$PROFILE" --arg path "$OUTPUT_IMAGE" \
   '.[$v]["virtual-layer"]["base_image"] = $path' \
   "$SCRIPT_DIR/versions.json" > "$SCRIPT_DIR/versions.json.tmp" \
   && mv "$SCRIPT_DIR/versions.json.tmp" "$SCRIPT_DIR/versions.json"
