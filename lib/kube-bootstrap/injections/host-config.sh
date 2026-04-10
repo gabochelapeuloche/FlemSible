@@ -24,6 +24,12 @@ export_kubeconfig_to_host() {
 
   print_cue "Exporting kubeconfig from $CP_NODE..."
 
+  if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    printf "  \e[33m[DRY-RUN]\e[0m Would export kubeconfig to %s\n" "$OUT"
+    export KUBECONFIG="$OUT"
+    return 0
+  fi
+
   # Temp copy with readable permissions so multipass transfer can pull it
   multipass exec "$CP_NODE" -- sudo cp /etc/kubernetes/admin.conf /tmp/admin.conf
   multipass exec "$CP_NODE" -- sudo chown ubuntu:ubuntu /tmp/admin.conf

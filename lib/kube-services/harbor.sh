@@ -29,7 +29,11 @@ install_helm() {
 install_harbor() {
   local CP_NODE="${CP_PREFIX}-1"
   local CP_IP
-  CP_IP=$(multipass info "$CP_NODE" | awk '/IPv4/ {print $2; exit}')
+  if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    CP_IP="<vm-ip>"
+  else
+    CP_IP=$(multipass info "$CP_NODE" | awk '/IPv4/ {print $2; exit}')
+  fi
 
   print_cue "Installing Harbor $HARBOR_CHART_VERSION on $CP_NODE (http://$CP_IP:30002)"
 

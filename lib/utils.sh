@@ -63,6 +63,17 @@ die() {
   exit 1
 }
 
+# drun [command...]
+# Execute a command normally, or print it prefixed with [DRY-RUN] when DRY_RUN=true.
+# Globals: DRY_RUN (r)
+drun() {
+  if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    printf "  \e[33m[DRY-RUN]\e[0m %s\n" "$*"
+    return 0
+  fi
+  "$@"
+}
+
 # require_cmd [command]
 # Assert that a command is available on the host; die if not.
 require_cmd() {
@@ -104,6 +115,7 @@ Options:
   --disk XG       Disk per VM (e.g. 15G)
   --network NAME  Multipass network name
   --verbose       Enable verbose output
+  --dry-run       Print what would be executed without running anything
   -h, --help      Show this help
 EOF
 }
@@ -155,6 +167,10 @@ user_inputs() {
         VERBOSE_USER="$2"
         shift
         ;;
+      --dry-run)
+        export DRY_RUN=true
+        shift
+        ;;
       *)
         die "Option inconnue : $1"
         ;;
@@ -176,6 +192,11 @@ run_on_node_env() {
   local LOG_FILE="$LOG_SESSION_DIR/${NODE}.log"
 
   printf "  %-15s | %-20s | " "$NODE" "$NAME"
+
+  if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    echo -e "\e[33m[DRY-RUN]\e[0m"
+    return 0
+  fi
 
   multipass transfer "$SRC" "$NODE:/tmp/$NAME"
 
@@ -200,6 +221,11 @@ run_on_node() {
   local LOG_FILE="$LOG_SESSION_DIR/${NODE}.log"
 
   printf "  %-15s | %-20s | " "$NODE" "$NAME"
+
+  if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    echo -e "\e[33m[DRY-RUN]\e[0m"
+    return 0
+  fi
 
   multipass transfer "$SRC" "$NODE:/tmp/$NAME"
 

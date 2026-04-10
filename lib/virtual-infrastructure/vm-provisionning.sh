@@ -34,8 +34,9 @@ create_vms() {
 
   for ((i=1; i<=CP_NUMBER; i++)); do
     VMS+=("$CP_PREFIX-$i")
-    multipass info "$CP_PREFIX-$i" &>/dev/null && die "La VM $CP_PREFIX-$i existe déjà"
-    multipass launch "$CP_IMAGE" \
+    [[ "${DRY_RUN:-false}" != "true" ]] \
+      && multipass info "$CP_PREFIX-$i" &>/dev/null && die "La VM $CP_PREFIX-$i existe déjà"
+    drun multipass launch "$CP_IMAGE" \
       --name "$CP_PREFIX-$i" \
       --cpus "$CP_CPUS" \
       --memory "$CP_MEMORY" \
@@ -44,8 +45,9 @@ create_vms() {
 
   for ((i=1; i<=W_NUMBER; i++)); do
     VMS+=("$W_PREFIX-$i")
-    multipass info "$W_PREFIX-$i" &>/dev/null && die "La VM $W_PREFIX-$i existe déjà"
-    multipass launch "$W_IMAGE" \
+    [[ "${DRY_RUN:-false}" != "true" ]] \
+      && multipass info "$W_PREFIX-$i" &>/dev/null && die "La VM $W_PREFIX-$i existe déjà"
+    drun multipass launch "$W_IMAGE" \
       --name "$W_PREFIX-$i" \
       --cpus "$W_CPUS" \
       --memory "$W_MEMORY" \
