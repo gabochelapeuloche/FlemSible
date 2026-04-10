@@ -102,6 +102,10 @@ join_workers() {
         echo -e "\e[33m[DRY-RUN]\e[0m"
         exit 0
       fi
+      if kubectl get node "$NODE" &>/dev/null 2>&1; then
+        echo -e "\e[33m[already joined]\e[0m"
+        exit 0
+      fi
       if multipass exec "$NODE" -- sudo bash -c "$JOIN_CMD" </dev/null 2>&1 \
           | tee -a "$local_log" > /dev/null; then
         echo -e "\e[32m[OK]\e[0m"
