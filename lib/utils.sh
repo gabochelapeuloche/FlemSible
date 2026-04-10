@@ -183,18 +183,20 @@ user_inputs() {
   done
 }
 
-# run_on_node_env [node] [script_path] [env_vars]
+# run_on_node_env [node] [script_path] [env_vars] [log_file]
 # Transfer a script to a VM and execute it with injected environment variables.
-# Output is logged to $LOG_SESSION_DIR/<node>.log; console shows [OK]/[FAILED].
-# Arguments: $1 = VM name, $2 = local script path, $3 = "VAR=val VAR2=val2"
+# Output is logged to $LOG_SESSION_DIR/<node>.log (or [log_file] if provided);
+# console shows [OK]/[FAILED].
+# Arguments: $1 = VM name, $2 = local script path, $3 = "VAR=val VAR2=val2",
+#            $4 = optional log file path override
 # Globals: LOG_SESSION_DIR (r)
 run_on_node_env() {
   local NODE="$1"
   local SRC="$2"
   local VARS="${3:-}"
+  local LOG_FILE="${4:-$LOG_SESSION_DIR/${NODE}.log}"
   local NAME
   NAME=$(basename "$SRC")
-  local LOG_FILE="$LOG_SESSION_DIR/${NODE}.log"
 
   printf "  %-15s | %-20s | " "$NODE" "$NAME"
 
@@ -214,16 +216,17 @@ run_on_node_env() {
   fi
 }
 
-# run_on_node [node] [script_path]
+# run_on_node [node] [script_path] [log_file]
 # Transfer a script to a VM and execute it without extra environment variables.
-# Arguments: $1 = VM name, $2 = local script path
+# Arguments: $1 = VM name, $2 = local script path,
+#            $3 = optional log file path override
 # Globals: LOG_SESSION_DIR (r)
 run_on_node() {
   local NODE="$1"
   local SRC="$2"
+  local LOG_FILE="${3:-$LOG_SESSION_DIR/${NODE}.log}"
   local NAME
   NAME=$(basename "$SRC")
-  local LOG_FILE="$LOG_SESSION_DIR/${NODE}.log"
 
   printf "  %-15s | %-20s | " "$NODE" "$NAME"
 

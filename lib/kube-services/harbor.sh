@@ -21,7 +21,8 @@ install_helm() {
 
   run_on_node_env "$CP_NODE" \
     "$SCRIPT_DIR/lib/kube-bootstrap/injections/helm.sh" \
-    "VERSION=$HELM_VERSION URL=$HELM_URL"
+    "VERSION=$HELM_VERSION URL=$HELM_URL" \
+    "$LOG_SESSION_DIR/helm.log"
 }
 
 # install_harbor
@@ -46,7 +47,8 @@ install_harbor() {
      CHART=$HARBOR_CHART \
      NAMESPACE=$HARBOR_NAMESPACE \
      RELEASE=$HARBOR_RELEASE \
-     EXTERNAL_URL=http://$CP_IP:30002"
+     EXTERNAL_URL=http://$CP_IP:30002" \
+    "$LOG_SESSION_DIR/harbor.log"
 }
 
 # install_harbor_mirror
@@ -66,7 +68,8 @@ install_harbor_mirror() {
   for NODE in "${VMS[@]}"; do
     run_on_node_env "$NODE" \
       "$SCRIPT_DIR/lib/kube-services/injections/configure-harbor-mirror.sh" \
-      "HARBOR_IP=$CP_IP HARBOR_PORT=30002" &
+      "HARBOR_IP=$CP_IP HARBOR_PORT=30002" \
+      "$LOG_SESSION_DIR/harbor-mirror-${NODE}.log" &
   done
   wait
 }
