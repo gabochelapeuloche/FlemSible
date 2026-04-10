@@ -61,7 +61,12 @@ prepare_node() {
 init_control_plane() {
   local NODE_NAME="${CP_PREFIX}-1"
   local CP_IP
-  CP_IP=$(multipass exec "$NODE_NAME" -- hostname -I | awk '{print $1}')
+
+  if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    CP_IP="<vm-ip>"
+  else
+    CP_IP=$(multipass exec "$NODE_NAME" -- hostname -I | awk '{print $1}')
+  fi
 
   print_cue "Initializing control-plane on $NODE_NAME ($CP_IP)"
 
@@ -70,12 +75,8 @@ init_control_plane() {
     "POD_CIDR=$CP_POD_CIDR"
 
   # Make kubeconfig accessible to the ubuntu user inside the VM
-  multipass exec "$NODE_NAME" -- bash -c '
-    mkdir -p $HOME/.kube
-    sudo cp /etc/kubernetes/admin.conf $HOME/.kube/config
-    sudo chown $(id -u):$(id -g) $HOME/.kube/config
-    chmod 600 $HOME/.kube/config
-  '
+  drun multipass exec "$NODE_NAME" -- bash -c \
+    'mkdir -p $HOME/.kube && sudo cp /etc/kubernetes/admin.conf $HOME/.kube/config && sudo chown $(id -u):$(id -g) $HOME/.kube/config && chmod 600 $HOME/.kube/config'
 }
 
 # join_workers
@@ -85,12 +86,31 @@ init_control_plane() {
 join_workers() {
   local CP_NODE="$CP_PREFIX-1"
   local JOIN_CMD
-  JOIN_CMD=$(multipass exec "$CP_NODE" -- sudo kubeadm token create --print-join-command)
+
+  if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    JOIN_CMD="kubeadm join <cp-ip>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>"
+  else
+    JOIN_CMD=$(multipass exec "$CP_NODE" -- sudo kubeadm token create --print-join-command)
+  fi
 
   for NODE in "${VMS[@]}"; do
     [[ "$NODE" == "$CP_NODE" ]] && continue
-    print_cue "Joining worker $NODE"
-    multipass exec "$NODE" -- sudo bash -c "$JOIN_CMD" &
+    (
+      local_log="$LOG_SESSION_DIR/${NODE}.log"
+      printf "  %-15s | %-20s | " "$NODE" "kubeadm join"
+      if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        echo -e "\e[33m[DRY-RUN]\e[0m"
+        exit 0
+      fi
+      if multipass exec "$NODE" -- sudo bash -c "$JOIN_CMD" </dev/null 2>&1 \
+          | tee -a "$local_log" > /dev/null; then
+        echo -e "\e[32m[OK]\e[0m"
+      else
+        echo -e "\e[31m[FAILED]\e[0m"
+        echo "    ↳ Check logs: $local_log"
+        exit 1
+      fi
+    ) &
   done
   wait
 }
