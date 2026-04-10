@@ -17,6 +17,8 @@ URL="${URL:-}"
 
 COMPONENT="cni-plugins"
 BIN_DIR="/opt/cni/bin"
+ARCH=$(uname -m); [[ "$ARCH" == "aarch64" ]] && ARCH="arm64" || ARCH="amd64"
+URL="${URL/linux-amd64/linux-${ARCH}}"
 FILE="$(basename "$URL")"
 
 # is_installed

@@ -28,8 +28,11 @@ is_installed() {
 # Download the containerd tarball, extract to /usr/local, install the systemd
 # service unit, generate the default config, and enable SystemdCgroup.
 install() {
-  curl -fsSLO "$CHECK_SUM_URL"
-  sudo tar -C /usr/local -xzf "containerd-${VERSION}-linux-amd64.tar.gz"
+  local ARCH
+  ARCH=$(uname -m); [[ "$ARCH" == "aarch64" ]] && ARCH="arm64" || ARCH="amd64"
+  local ARCH_URL="${CHECK_SUM_URL/linux-amd64/linux-${ARCH}}"
+  curl -fsSLO "$ARCH_URL"
+  sudo tar -C /usr/local -xzf "containerd-${VERSION}-linux-${ARCH}.tar.gz"
 
   curl -fsSLO "$SERVICE_URL"
   sudo mkdir -p /usr/local/lib/systemd/system

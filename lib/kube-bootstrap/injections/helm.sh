@@ -26,12 +26,15 @@ is_installed() {
 # install
 # Download the Helm tarball, extract the binary, and install it system-wide.
 install() {
+  local ARCH
+  ARCH=$(uname -m); [[ "$ARCH" == "aarch64" ]] && ARCH="arm64" || ARCH="amd64"
   echo "[$COMPONENT] installing v$VERSION"
-  local archive="helm-v${VERSION}-linux-amd64.tar.gz"
-  curl -fsSLO "$URL"
-  tar -zxf "$archive" linux-amd64/helm
-  sudo install -m 755 linux-amd64/helm /usr/local/bin/helm
-  rm -rf linux-amd64 "$archive"
+  local archive="helm-v${VERSION}-linux-${ARCH}.tar.gz"
+  local ARCH_URL="${URL/linux-amd64/linux-${ARCH}}"
+  curl -fsSLO "$ARCH_URL"
+  tar -zxf "$archive" "linux-${ARCH}/helm"
+  sudo install -m 755 "linux-${ARCH}/helm" /usr/local/bin/helm
+  rm -rf "linux-${ARCH}" "$archive"
 }
 
 main() {

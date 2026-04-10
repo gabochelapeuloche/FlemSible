@@ -27,9 +27,12 @@ is_installed() {
 # install
 # Download the runc binary and install it with executable permissions.
 install() {
+  local ARCH
+  ARCH=$(uname -m); [[ "$ARCH" == "aarch64" ]] && ARCH="arm64" || ARCH="amd64"
+  local ARCH_URL="${URL/runc.amd64/runc.${ARCH}}"
   echo "[$COMPONENT] installing version $VERSION"
-  curl -fsSLO "$URL"
-  sudo install -m 755 runc.amd64 "$BIN_PATH"
+  curl -fsSLO "$ARCH_URL"
+  sudo install -m 755 "runc.${ARCH}" "$BIN_PATH"
 }
 
 main() {
